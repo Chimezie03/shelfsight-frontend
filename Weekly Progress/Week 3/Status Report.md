@@ -20,10 +20,12 @@
 
 | Name | Details |
 |------|---------|
-| **Name 2** | **Tasks completed:** |
-| | • |
+| **Marc Manoj** | **Tasks completed:** |
+| | • Made ground works for book scanning and organizing|
+| | • started on blueprint for connecting everything to db and aws|
+| | • Researched on which ai tools to use as a team|
 | **Time Spent** | **Planned tasks for next week:** |
-| | • |
+| | • 4 hrs|
 | | **Any issues or challenges:** |
 | | • |
 
