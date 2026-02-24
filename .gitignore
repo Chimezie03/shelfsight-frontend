@@ -40,4 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Internal Task Files
 /Weekly Progress/Week 3/Tasks.md

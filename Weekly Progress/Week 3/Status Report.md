@@ -33,10 +33,11 @@
 
 | Name | Details |
 |------|---------|
-| **Name 3** | **Tasks completed:** |
-| | • |
+| **Chimezie Nnawuihe** | **Tasks completed:** |
+| | • Setup github and jira nfrastructure|
+| | • Worked on the 2D library map|
 | **Time Spent** | **Planned tasks for next week:** |
-| | • |
+| | • 4 hours|
 | | **Any issues or challenges:** |
 | | • |
 
@@ -44,15 +45,28 @@
 
 | Name | Details |
 |------|---------|
-| **Name 4** | **Tasks completed:** |
-| | • |
+| **Kaelen Raible** | **Tasks completed:** |
+| | • Created Backend and 1st API Call |
 | **Time Spent** | **Planned tasks for next week:** |
-| | • |
+| | • 7 hours|
 | | **Any issues or challenges:** |
-| | • |
+| | • Deciding on local hosting for now and making DB online later|
 
 ---
 
-**Total Time Spent:**
+| Name | Details |
+|------|---------|
+| **Syed Hasan** | **Tasks completed:** |
+| | • Created Backend and 1st API Call |
+| **Time Spent** | **Planned tasks for next week:** |
+| | • 4 hours|
+| | **Any issues or challenges:** |
+| | • Drafted full technical specs including feature list with explicit in/out scope boundaries, a system architecture diagram showing how frontend, backend, and AI/data layers connect, and clear separation of concerns across all three domains.|
+
+---
+
+
+**Total Time Spent: 23**
 
 **Summary:**
+The team focused on foundational setup this week. Mirza handled task delegation and front-end boilerplate, Marc began groundwork for book scanning and AI tool research, Chimezie set up GitHub/Jira infrastructure and the 2D library map, Kaelen and Syed created the backend with the first API call, and Syed drafted full technical specs. Total effort was 23 hours across the team.
