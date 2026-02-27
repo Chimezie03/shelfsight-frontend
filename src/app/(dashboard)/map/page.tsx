@@ -38,17 +38,11 @@ export default function LibraryMapPage() {
     setViewMode("map");
   };
 
-  const showShelfView = () => {
-    if (selectedSection) {
-      setViewMode("shelf");
-    }
-  };
-
   return (
     <div className="p-8">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="mb-2 text-3xl font-semibold">Custom-built 2D Library Map</h1>
+          <h1 className="mb-2 text-3xl font-semibold">Interactive Library Map</h1>
           <p className="text-gray-600">
             {viewMode === "map"
               ? "Zoomed out layout. Click a shelf section to enter first-person shelf view."
@@ -57,8 +51,6 @@ export default function LibraryMapPage() {
         </div>
         <MapControls
           viewMode={viewMode}
-          hasSelection={selectedSection !== null}
-          onZoomIn={showShelfView}
           onBackToMap={showFullMap}
         />
       </div>
