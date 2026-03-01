@@ -1,146 +1,374 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MapPin } from "lucide-react";
-import { shelfSections } from "@/components/map/data";
-import { LibraryMapCanvas } from "@/components/map/LibraryMapCanvas";
-import { MapControls } from "@/components/map/MapControls";
-import { MapLegend } from "@/components/map/MapLegend";
-import { ShelfFirstPersonView } from "@/components/map/ShelfFirstPersonView";
-import { ShelfSectionCard } from "@/components/map/ShelfSectionCard";
-import { MapViewMode, ShelfSection } from "@/components/map/types";
-import { getCapacityPercent } from "@/components/map/utils";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import {
+  ReactFlowProvider,
+  useReactFlow,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  type Connection,
+} from "@xyflow/react";
+import {
+  DndContext,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+  PointerSensor,
+} from "@dnd-kit/core";
+import { toast } from "sonner";
+import { MapCanvas } from "@/components/map/MapCanvas";
+import { ShelfPalette } from "@/components/map/ShelfPalette";
+import { ShelfSettingsPanel } from "@/components/map/ShelfSettingsPanel";
+import { CanvasToolbar } from "@/components/map/CanvasToolbar";
+import { useMapHistory } from "@/components/map/useMapHistory";
+import {
+  MapCallbacksContext,
+  type MapCallbacks,
+} from "@/components/map/MapCallbacksContext";
+import {
+  INITIAL_NODES,
+  INITIAL_EDGES,
+} from "@/components/map/data";
+import type { ShelfFlowNode, ShelfNodeData, ShelfTemplate } from "@/components/map/types";
 
-export default function LibraryMapPage() {
-  const [viewMode, setViewMode] = useState<MapViewMode>("map");
-  const [selectedSection, setSelectedSection] = useState<ShelfSection | null>(null);
+function MapPageContent() {
+  const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [paletteOpen, setPaletteOpen] = useState(true);
 
-  const totals = useMemo(() => {
-    const totalCapacity = shelfSections.reduce((acc, section) => acc + section.capacity, 0);
-    const totalUsed = shelfSections.reduce((acc, section) => acc + section.used, 0);
+  const { pushSnapshot, undo, redo, canUndo, canRedo, isProgrammatic } =
+    useMapHistory(INITIAL_NODES, INITIAL_EDGES);
+  const reactFlowInstance = useReactFlow();
+  const nodeIdCounter = useRef(INITIAL_NODES.length + 1);
 
-    return {
-      totalCapacity,
-      totalUsed,
-      utilization: getCapacityPercent(totalUsed, totalCapacity),
-    };
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  // Selected node object
+  const selectedNode = useMemo(
+    () =>
+      selectedNodeId
+        ? (nodes.find((n) => n.id === selectedNodeId) as ShelfFlowNode | undefined) ?? null
+        : null,
+    [nodes, selectedNodeId]
+  );
+
+  // --- Node data updates ---
+  const updateNodeData = useCallback(
+    (nodeId: string, updates: Partial<ShelfNodeData>) => {
+      setNodes((prev) =>
+        prev.map((node) =>
+          node.id === nodeId
+            ? { ...node, data: { ...node.data, ...updates } }
+            : node
+        )
+      );
+    },
+    [setNodes]
+  );
+
+  const commitChange = useCallback(() => {
+    pushSnapshot(nodes, edges);
+  }, [nodes, edges, pushSnapshot]);
+
+  // --- Node actions ---
+  const deleteNode = useCallback(
+    (nodeId: string) => {
+      const nextNodes = nodes.filter((n) => n.id !== nodeId);
+      const nextEdges = edges.filter(
+        (e) => e.source !== nodeId && e.target !== nodeId
+      );
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      if (selectedNodeId === nodeId) setSelectedNodeId(null);
+      pushSnapshot(nextNodes, nextEdges);
+    },
+    [nodes, edges, selectedNodeId, setNodes, setEdges, pushSnapshot]
+  );
+
+  const duplicateNode = useCallback(
+    (nodeId: string) => {
+      const source = nodes.find((n) => n.id === nodeId);
+      if (!source) return;
+      const newId = `shelf-${nodeIdCounter.current++}`;
+      const newNode: ShelfFlowNode = {
+        ...source,
+        id: newId,
+        position: {
+          x: source.position.x + 40,
+          y: source.position.y + 40,
+        },
+        selected: false,
+        data: {
+          ...source.data,
+          label: `${source.data.label} (copy)`,
+          sectionCode: newId.replace("shelf-", "S-"),
+        },
+      };
+      const nextNodes = [...nodes, newNode];
+      setNodes(nextNodes);
+      setSelectedNodeId(newId);
+      pushSnapshot(nextNodes, edges);
+      toast.success("Shelf duplicated");
+    },
+    [nodes, edges, setNodes, pushSnapshot]
+  );
+
+  const selectNode = useCallback((nodeId: string | null) => {
+    setSelectedNodeId(nodeId);
   }, []);
 
-  const selectSection = (section: ShelfSection) => {
-    setSelectedSection(section);
-    setViewMode("shelf");
-  };
+  const deleteEdge = useCallback(
+    (edgeId: string) => {
+      const nextEdges = edges.filter((e) => e.id !== edgeId);
+      setEdges(nextEdges);
+      pushSnapshot(nodes, nextEdges);
+    },
+    [nodes, edges, setEdges, pushSnapshot]
+  );
 
-  const showFullMap = () => {
-    setViewMode("map");
-  };
+  // --- Callbacks context value ---
+  const callbacks: MapCallbacks = useMemo(
+    () => ({
+      onUpdateNodeData: updateNodeData,
+      onDeleteNode: deleteNode,
+      onDuplicateNode: duplicateNode,
+      onSelectNode: selectNode,
+      onDeleteEdge: deleteEdge,
+      onCommitChange: commitChange,
+    }),
+    [updateNodeData, deleteNode, duplicateNode, selectNode, deleteEdge, commitChange]
+  );
+
+  // --- Edge connection ---
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      setEdges((prev) => addEdge({ ...connection, type: "labeled", data: { label: "Adjacent" } }, prev));
+    },
+    [setEdges]
+  );
+
+  // --- DnD: palette → canvas ---
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || over.id !== "react-flow-canvas") return;
+
+      const template = active.data.current?.template as ShelfTemplate | undefined;
+      if (!template) return;
+
+      const translated = active.rect.current.translated;
+      if (!translated) return;
+
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: translated.left + translated.width / 2,
+        y: translated.top + translated.height / 2,
+      });
+
+      const newId = `shelf-${nodeIdCounter.current++}`;
+      const newNode: ShelfFlowNode = {
+        id: newId,
+        type: "shelf",
+        position,
+        style: { width: template.defaultData.width as number, height: template.defaultData.height as number },
+        data: {
+          ...template.defaultData,
+          label: `${template.label} ${nodeIdCounter.current - 1}`,
+          sectionCode: newId.replace("shelf-", "S-"),
+        } as ShelfNodeData,
+      };
+
+      const nextNodes = [...nodes, newNode];
+      setNodes(nextNodes);
+      setSelectedNodeId(newId);
+      pushSnapshot(nextNodes, edges);
+      toast.success(`Added ${template.label}`);
+    },
+    [reactFlowInstance, nodes, edges, setNodes, pushSnapshot]
+  );
+
+  // --- Keyboard shortcuts ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        e.preventDefault();
+        const snapshot = e.shiftKey ? redo() : undo();
+        if (snapshot) {
+          isProgrammatic.current = true;
+          setNodes(snapshot.nodes);
+          setEdges(snapshot.edges);
+          isProgrammatic.current = false;
+        }
+      }
+
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedNodeId) {
+        deleteNode(selectedNodeId);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, setNodes, setEdges, isProgrammatic, selectedNodeId, deleteNode]);
+
+  // --- Toolbar handlers ---
+  const handleUndo = useCallback(() => {
+    const snapshot = undo();
+    if (snapshot) {
+      isProgrammatic.current = true;
+      setNodes(snapshot.nodes);
+      setEdges(snapshot.edges);
+      isProgrammatic.current = false;
+    }
+  }, [undo, setNodes, setEdges, isProgrammatic]);
+
+  const handleRedo = useCallback(() => {
+    const snapshot = redo();
+    if (snapshot) {
+      isProgrammatic.current = true;
+      setNodes(snapshot.nodes);
+      setEdges(snapshot.edges);
+      isProgrammatic.current = false;
+    }
+  }, [redo, setNodes, setEdges, isProgrammatic]);
+
+  const handleSave = useCallback(() => {
+    const layout = { nodes, edges };
+    console.log("Saved layout:", JSON.stringify(layout, null, 2));
+    toast.success("Layout saved to console");
+  }, [nodes, edges]);
+
+  const handleClear = useCallback(() => {
+    pushSnapshot(nodes, edges);
+    setNodes([]);
+    setEdges([]);
+    setSelectedNodeId(null);
+    toast.success("Canvas cleared");
+  }, [nodes, edges, setNodes, setEdges, pushSnapshot]);
+
+  const handleExportImage = useCallback(async () => {
+    const viewport = document.querySelector(
+      ".react-flow__viewport"
+    ) as HTMLElement;
+    if (!viewport) {
+      toast.error("Could not find canvas to export");
+      return;
+    }
+    try {
+      // Dynamic import to avoid hard dependency
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(viewport, {
+        backgroundColor: "#ffffff",
+        quality: 1,
+      });
+      const link = document.createElement("a");
+      link.download = "library-map.png";
+      link.href = dataUrl;
+      link.click();
+      toast.success("Exported canvas as PNG");
+    } catch {
+      // Fallback: export as JSON download
+      const layout = JSON.stringify({ nodes, edges }, null, 2);
+      const blob = new Blob([layout], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = "library-map.json";
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Exported layout as JSON (install html-to-image for PNG export)");
+    }
+  }, [nodes, edges]);
+
+  // Track node drag end for history
+  const wrappedOnNodesChange: typeof onNodesChange = useCallback(
+    (changes) => {
+      onNodesChange(changes);
+
+      const hasDragStop = changes.some(
+        (c) => c.type === "position" && c.dragging === false
+      );
+      if (hasDragStop) {
+        // Defer so React Flow state is flushed before snapshot
+        requestAnimationFrame(() => {
+          pushSnapshot(nodes, edges);
+        });
+      }
+    },
+    [onNodesChange, nodes, edges, pushSnapshot]
+  );
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="mb-2 text-3xl font-semibold">Interactive Library Map</h1>
-          <p className="text-gray-600">
-            {viewMode === "map"
-              ? "Zoomed out layout. Click a shelf section to enter first-person shelf view."
-              : `Zoomed in on ${selectedSection?.name} (${selectedSection?.category}).`}
-          </p>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <MapCallbacksContext.Provider value={callbacks}>
+        <div className="flex h-full flex-col">
+          {/* Toolbar */}
+          <div className="flex-none border-b px-3 py-2">
+            <CanvasToolbar
+              onZoomIn={() => reactFlowInstance.zoomIn()}
+              onZoomOut={() => reactFlowInstance.zoomOut()}
+              onFitView={() => reactFlowInstance.fitView({ padding: 0.2 })}
+              snapToGrid={snapToGrid}
+              onToggleSnapToGrid={() => setSnapToGrid((prev) => !prev)}
+              showMinimap={showMinimap}
+              onToggleMinimap={() => setShowMinimap((prev) => !prev)}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onSave={handleSave}
+              onClear={handleClear}
+              onExportImage={handleExportImage}
+            />
+          </div>
+
+          {/* Main content: palette + canvas + settings */}
+          <div className="flex flex-1 overflow-hidden">
+            <ShelfPalette
+              isOpen={paletteOpen}
+              onToggle={() => setPaletteOpen((prev) => !prev)}
+            />
+
+            <div className="flex-1">
+              <MapCanvas
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={wrappedOnNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={selectNode}
+                snapToGrid={snapToGrid}
+                showMinimap={showMinimap}
+              />
+            </div>
+
+            <ShelfSettingsPanel
+              node={selectedNode}
+              nodes={nodes}
+              edges={edges}
+              onUpdateNodeData={updateNodeData}
+              onDeleteEdge={deleteEdge}
+              onClose={() => setSelectedNodeId(null)}
+            />
+          </div>
         </div>
-        <MapControls
-          viewMode={viewMode}
-          onBackToMap={showFullMap}
-        />
-      </div>
+      </MapCallbacksContext.Provider>
+    </DndContext>
+  );
+}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <MapPin className="h-5 w-5 text-indigo-600" />
-              {viewMode === "map" ? "Full 2D Layout" : "First-person Shelf View"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[600px] p-4">
-            <AnimatePresence mode="wait">
-              {viewMode === "map" ? (
-                <motion.div
-                  key="map-mode"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.01 }}
-                  className="relative h-full"
-                >
-                  <MapLegend />
-                  <LibraryMapCanvas
-                    sections={shelfSections}
-                    selectedSectionId={selectedSection?.id ?? null}
-                    onSelectSection={selectSection}
-                  />
-                </motion.div>
-              ) : selectedSection ? (
-                <motion.div key="shelf-mode" className="h-full">
-                  <ShelfFirstPersonView section={selectedSection} />
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          {selectedSection ? (
-            <ShelfSectionCard section={selectedSection} />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Map Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Total Sections</span>
-                  <span className="font-semibold">{shelfSections.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Capacity</span>
-                  <span className="font-semibold">{totals.totalUsed}/{totals.totalCapacity}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Utilization</span>
-                  <Badge variant="outline">{totals.utilization}%</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Selected Shelf Books</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {selectedSection ? (
-                <div className="space-y-2">
-                  {selectedSection.books.map((book) => (
-                    <div
-                      key={`${selectedSection.id}-${book.title}`}
-                      className="flex items-center justify-between rounded-md bg-gray-50 p-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{book.title}</p>
-                        <p className="text-xs text-gray-500">{book.author}</p>
-                      </div>
-                      <Badge variant="outline">{book.dewey}</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">Select a section in the map to view shelf contents.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+export default function LibraryMapPage() {
+  return (
+    <ReactFlowProvider>
+      <MapPageContent />
+    </ReactFlowProvider>
   );
 }
