@@ -61,6 +61,7 @@ export function MapCanvas({
         snapGrid={[20, 20]}
         deleteKeyCode={["Backspace", "Delete"]}
         fitView
+        fitViewOptions={{ maxZoom: 1 }}
         defaultEdgeOptions={{ type: "labeled", data: { label: "Adjacent" } }}
         className="!bg-background"
       >

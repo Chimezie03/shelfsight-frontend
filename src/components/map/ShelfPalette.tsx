@@ -68,7 +68,7 @@ function DraggableTemplateCard({ template }: { template: ShelfTemplate }) {
       </div>
       <div className="min-w-0">
         <p className="text-xs font-medium truncate">{template.label}</p>
-        <p className="text-[10px] text-muted-foreground truncate">
+        <p className="text-[10px] text-muted-foreground leading-tight">
           {template.description}
         </p>
       </div>
@@ -97,12 +97,12 @@ export function ShelfPalette({ isOpen, onToggle }: ShelfPaletteProps) {
         {isOpen && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 200, opacity: 1 }}
+            animate={{ width: 220, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="h-full overflow-hidden border-r bg-card"
           >
-            <div className="flex h-full w-[200px] flex-col">
+            <div className="flex h-full w-[220px] flex-col">
               {/* Header */}
               <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
                 <h3 className="text-xs font-semibold">Shelf Templates</h3>
