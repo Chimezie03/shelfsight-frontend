@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -252,17 +251,34 @@ export function ShelfSettingsPanel({
                   </div>
                 </div>
 
-                {/* Orientation */}
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Vertical Orientation</Label>
-                  <Switch
-                    checked={node.data.orientation === "vertical"}
-                    onCheckedChange={(checked) =>
-                      update({
-                        orientation: checked ? "vertical" : "horizontal",
-                      })
-                    }
+                {/* Rotation */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Rotation</Label>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {node.data.rotation}°
+                    </span>
+                  </div>
+                  <Slider
+                    value={[node.data.rotation]}
+                    onValueChange={([value]) => update({ rotation: value })}
+                    min={0}
+                    max={359}
+                    step={1}
                   />
+                  <div className="flex gap-1.5">
+                    {[0, 90, 180, 270].map((deg) => (
+                      <Button
+                        key={deg}
+                        variant={node.data.rotation === deg ? "secondary" : "outline"}
+                        size="sm"
+                        className="h-6 flex-1 text-[10px]"
+                        onClick={() => update({ rotation: deg })}
+                      >
+                        {deg}°
+                      </Button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Notes */}

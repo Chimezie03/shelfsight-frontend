@@ -190,8 +190,14 @@ function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNod
             className="!h-1.5 !w-1.5 !rounded-full !border !border-indigo-400 !bg-background !opacity-0 transition-opacity group-hover:!opacity-100"
           />
 
-          {/* Node content */}
-          <div className="flex h-full flex-col justify-between p-1.5 overflow-hidden">
+          {/* Node content — rotated via CSS */}
+          <div
+            className="flex h-full flex-col justify-between p-1.5 overflow-hidden"
+            style={{
+              transform: data.rotation ? `rotate(${data.rotation}deg)` : undefined,
+              transformOrigin: "center center",
+            }}
+          >
             {/* Header row: icon + name + category */}
             <div className="flex items-start gap-1.5">
               <div

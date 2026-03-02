@@ -40,7 +40,7 @@ export interface ShelfNodeData {
   sectionCode: string;
   notes: string;
   color: string;
-  orientation: "horizontal" | "vertical";
+  rotation: number;
   width: number;
   height: number;
 }
