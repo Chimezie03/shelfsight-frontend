@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -15,6 +15,7 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAuth } from "@/components/auth-provider";
 
 export default function DashboardLayout({
   children,
@@ -31,19 +33,49 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const navigation = [
-    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "AI Book Ingestion", path: "/ingest", icon: ScanLine },
-    { name: "Library Map", path: "/map", icon: Map },
-    { name: "Catalog", path: "/catalog", icon: Library },
-    { name: "Circulation", path: "/circulation", icon: RefreshCw },
-    { name: "Members", path: "/members", icon: Users },
-    { name: "Reports", path: "/reports", icon: BarChart3 },
+  const allNavigation = [
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ["ADMIN", "STAFF", "PATRON"] },
+    { name: "AI Book Ingestion", path: "/ingest", icon: ScanLine, roles: ["ADMIN", "STAFF"] },
+    { name: "Library Map", path: "/map", icon: Map, roles: ["ADMIN", "STAFF", "PATRON"] },
+    { name: "Catalog", path: "/catalog", icon: Library, roles: ["ADMIN", "STAFF", "PATRON"] },
+    { name: "Circulation", path: "/circulation", icon: RefreshCw, roles: ["ADMIN", "STAFF"] },
+    { name: "Members", path: "/members", icon: Users, roles: ["ADMIN"] },
+    { name: "Reports", path: "/reports", icon: BarChart3, roles: ["ADMIN"] },
   ];
 
-  const handleLogout = () => {
+  const navigation = allNavigation.filter((item) =>
+    item.roles.includes(user?.role ?? "PATRON")
+  );
+
+  // Show spinner while auth state is loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  const handleLogout = async () => {
+    await logout();
     router.push("/");
   };
 
@@ -65,7 +97,14 @@ export default function DashboardLayout({
             {!isCollapsed && (
               <div>
                 <h1 className="font-semibold text-lg">ShelfSight</h1>
-                <p className="text-xs text-gray-500">Admin Portal</p>
+                <p className="text-xs text-gray-500">
+                  {user?.name ?? "Admin Portal"}
+                  {user?.role && (
+                    <span className="ml-1 text-indigo-600">
+                      · {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
+                    </span>
+                  )}
+                </p>
               </div>
             )}
           </div>

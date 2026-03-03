@@ -53,15 +53,21 @@ src/app/
 ### Key Directories
 
 - `src/components/ui/` — ShadCN UI primitives (button, card, table, dialog, etc.)
-- `src/components/providers.tsx` — Client-side ThemeProvider wrapper
+- `src/components/providers.tsx` — Client-side ThemeProvider + AuthProvider wrapper
+- `src/components/auth-provider.tsx` — AuthContext with `useAuth()` hook (user, login, logout, isAuthenticated)
 - `src/lib/utils.ts` — `cn()` utility (clsx + tailwind-merge)
+- `src/lib/api.ts` — Base `apiFetch()` wrapper (credentials: include, typed errors)
+- `src/lib/auth.ts` — Auth API functions (loginApi, logoutApi, fetchCurrentUser)
 - `Figma Mockups/` — Original Vite prototype from Figma Make (design reference only, excluded from TS compilation)
 
 ### Design Patterns
 
 - Primary brand color: `indigo-600`
 - All page components are client components (`"use client"`)
-- Pages currently use mock data — backend API integration is pending
+- Authentication uses JWT in HttpOnly cookies — frontend sends `credentials: 'include'` (no client-side token storage)
+- Auth state managed via React Context (`AuthProvider` + `useAuth()` hook)
+- Dashboard routes are protected — unauthenticated users are redirected to `/`
+- API base URL configured via `NEXT_PUBLIC_API_URL` env var (defaults to `http://localhost:3001`)
 - Sidebar navigation uses Next.js `<Link>` with `usePathname()` for active state
 - ShadCN components import `cn` from `@/lib/utils`
 
@@ -77,8 +83,9 @@ src/app/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/auth/login` | Authenticate; returns JWT + role |
-| `GET` | `/users/me` | Current user profile, loans, fines |
+| `POST` | `/auth/login` | Authenticate; sets HttpOnly JWT cookie, returns user |
+| `POST` | `/auth/logout` | Clears JWT cookie |
+| `GET` | `/auth/me` | Current user profile (requires auth cookie) |
 | `GET` | `/books` | Search/filter books |
 | `POST` | `/books` | Create book record (Staff/Admin) |
 | `POST` | `/ingest/analyze` | Image upload → AI-generated metadata for review |
