@@ -50,6 +50,13 @@ export default function DashboardLayout({
     item.roles.includes(user?.role ?? "PATRON")
   );
 
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   // Show spinner while auth state is loading
   if (isLoading) {
     return (
@@ -58,13 +65,6 @@ export default function DashboardLayout({
       </div>
     );
   }
-
-  // Redirect unauthenticated users to login
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/");
-    }
-  }, [isLoading, isAuthenticated, router]);
 
   if (!isAuthenticated) {
     return (
