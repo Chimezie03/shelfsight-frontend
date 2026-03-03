@@ -45,8 +45,9 @@ export function MapCanvas({
         snapToGrid={snapToGrid}
         snapGrid={[20, 20]}
         deleteKeyCode={["Backspace", "Delete"]}
+        defaultViewport={{ x: 50, y: 50, zoom: 1.2 }}
         fitView
-        fitViewOptions={{ maxZoom: 1 }}
+        fitViewOptions={{ maxZoom: 1.5, padding: 0.3 }}
         className="!bg-background"
       >
         <Background
@@ -64,7 +65,7 @@ export function MapCanvas({
             className="!bg-card !border-border !shadow-sm"
             nodeColor={(node) => {
               const data = node.data as ShelfNodeData;
-              return data.color ?? "#4F46E5";
+              return data.color ?? "#1B2A4A";
             }}
             maskColor="rgba(0, 0, 0, 0.08)"
             pannable

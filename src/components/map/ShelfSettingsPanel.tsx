@@ -71,7 +71,7 @@ export function ShelfSettingsPanel({
             {/* Header */}
             <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold truncate">
+                <h3 className="text-sm font-display font-semibold truncate">
                   {node.data.label}
                 </h3>
                 <p className="text-xs text-muted-foreground">

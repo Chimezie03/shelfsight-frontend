@@ -75,7 +75,7 @@ function ToolbarButton({
           size="icon"
           className={cn(
             "h-7 w-7",
-            active && "bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400",
+            active && "bg-brand-copper/10 text-brand-copper dark:bg-brand-copper/20 dark:text-brand-copper",
             variant === "destructive" &&
               "text-destructive hover:text-destructive hover:bg-destructive/10"
           )}
@@ -173,7 +173,7 @@ export function CanvasToolbar({
           </Tooltip>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Clear Canvas</AlertDialogTitle>
+              <AlertDialogTitle className="font-display">Clear Canvas</AlertDialogTitle>
               <AlertDialogDescription>
                 This will remove all shelf nodes from the canvas.
                 This action cannot be undone.

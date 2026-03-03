@@ -19,7 +19,7 @@ export function LibraryMapCanvas({ sections, selectedSectionId, onSelectSection 
         <rect x="20" y="28" width="560" height="322" rx="18" fill="#EEF2FF" stroke="#C7D2FE" strokeWidth="2" />
 
         <rect x="20" y="310" width="560" height="40" rx="0" fill="#BFDBFE" opacity="0.65" />
-        <text x="300" y="336" textAnchor="middle" className="fill-indigo-700 text-[13px] font-semibold tracking-wide">
+        <text x="300" y="336" textAnchor="middle" className="fill-brand-navy text-[13px] font-semibold tracking-wide">
           Main Entrance
         </text>
 

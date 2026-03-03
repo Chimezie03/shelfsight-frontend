@@ -16,6 +16,7 @@ import {
   BookMarked,
   CalendarClock,
   Star,
+  ArrowRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,10 +28,10 @@ import Link from "next/link";
 /* ------------------------------------------------------------------ */
 function AdminDashboard({ name }: { name: string }) {
   const stats = [
-    { label: "Total Books", value: "2,847", icon: BookOpen, color: "bg-blue-500" },
-    { label: "Active Members", value: "342", icon: Users, color: "bg-green-500" },
-    { label: "Books Checked Out", value: "127", icon: Clock, color: "bg-orange-500" },
-    { label: "Overdue Items", value: "8", icon: AlertCircle, color: "bg-red-500" },
+    { label: "Total Books", value: "2,847", icon: BookOpen, accent: "bg-brand-navy/8 text-brand-navy" },
+    { label: "Active Members", value: "342", icon: Users, accent: "bg-brand-sage/10 text-brand-sage" },
+    { label: "Books Checked Out", value: "127", icon: Clock, accent: "bg-brand-amber/10 text-brand-amber" },
+    { label: "Overdue Items", value: "8", icon: AlertCircle, accent: "bg-brand-brick/10 text-brand-brick" },
   ];
 
   const recentActivity = [
@@ -48,65 +49,56 @@ function AdminDashboard({ name }: { name: string }) {
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-8 ">
+      {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <ShieldCheck className="w-7 h-7 text-indigo-600" />
-          <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-9 h-9 rounded-xl bg-brand-navy/8 flex items-center justify-center">
+            <ShieldCheck className="w-5 h-5 text-brand-navy" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
+            Admin Dashboard
+          </h1>
         </div>
-        <p className="text-gray-600">Welcome back, {name}! Full system overview and management controls.</p>
+        <p className="text-sm text-muted-foreground ml-12">
+          Welcome back, {name}. Full system overview and management controls.
+        </p>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Link href="/ingest">
-          <Card className="hover:border-indigo-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <ScanLine className="w-5 h-5 text-indigo-600" />
-              <span className="font-medium text-sm">AI Ingest</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/map">
-          <Card className="hover:border-indigo-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <Map className="w-5 h-5 text-indigo-600" />
-              <span className="font-medium text-sm">Library Map</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/members">
-          <Card className="hover:border-indigo-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <Users className="w-5 h-5 text-indigo-600" />
-              <span className="font-medium text-sm">Manage Members</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/reports">
-          <Card className="hover:border-indigo-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <BarChart3 className="w-5 h-5 text-indigo-600" />
-              <span className="font-medium text-sm">Reports</span>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        {[
+          { href: "/ingest", icon: ScanLine, label: "AI Ingest" },
+          { href: "/map", icon: Map, label: "Library Map" },
+          { href: "/members", icon: Users, label: "Manage Members" },
+          { href: "/reports", icon: BarChart3, label: "Reports" },
+        ].map((action) => (
+          <Link key={action.href} href={action.href}>
+            <Card className="group hover:border-brand-copper/40 hover:shadow-md hover:shadow-brand-copper/5 transition-all duration-200 cursor-pointer">
+              <CardContent className="py-3.5 px-4 flex items-center gap-3">
+                <action.icon className="w-4 h-4 text-brand-copper group-hover:scale-110 transition-transform" />
+                <span className="text-[13px] font-medium">{action.label}</span>
+                <ArrowRight className="w-3 h-3 ml-auto text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <Card key={stat.label}>
-              <CardContent className="pt-6">
+              <CardContent className="pt-5 pb-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-3xl font-semibold">{stat.value}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{stat.label}</p>
+                    <p className="text-2xl font-display font-semibold tracking-tight">{stat.value}</p>
                   </div>
-                  <div className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-white" />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.accent}`}>
+                    <Icon className="w-5 h-5" />
                   </div>
                 </div>
               </CardContent>
@@ -118,21 +110,24 @@ function AdminDashboard({ name }: { name: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activity */}
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>System Activity</CardTitle>
-            <CardDescription>All user actions across the system</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-display">System Activity</CardTitle>
+            <CardDescription className="text-xs">All user actions across the system</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-0">
               {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between py-3 border-b last:border-0">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{activity.action}</p>
-                    <p className="text-sm text-gray-600">{activity.title}</p>
+                <div key={index} className="flex items-center justify-between py-3 border-b border-border/60 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium">{activity.action}</p>
+                    <p className="text-xs text-muted-foreground truncate">{activity.title}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-500">{activity.time}</span>
-                    <Badge variant={activity.status === "success" ? "default" : activity.status === "pending" ? "secondary" : "outline"}>
+                  <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                    <span className="text-[11px] text-muted-foreground">{activity.time}</span>
+                    <Badge
+                      variant={activity.status === "success" ? "default" : activity.status === "pending" ? "secondary" : "outline"}
+                      className="text-[10px] px-2 py-0.5"
+                    >
                       {activity.status}
                     </Badge>
                   </div>
@@ -144,26 +139,26 @@ function AdminDashboard({ name }: { name: string }) {
 
         {/* AI Recommendations */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-display">
+              <TrendingUp className="w-4 h-4 text-brand-copper" />
               AI Recommendations
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {aiRecommendations.map((rec, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="font-medium text-sm">{rec.title}</p>
+                <div key={index} className="p-3 bg-secondary/60 rounded-xl">
+                  <div className="flex items-start justify-between mb-1.5">
+                    <p className="text-[13px] font-medium leading-snug">{rec.title}</p>
                     <Badge
                       variant={rec.priority === "high" ? "destructive" : rec.priority === "medium" ? "default" : "secondary"}
-                      className="text-xs"
+                      className="text-[10px] px-2 py-0.5 ml-2 flex-shrink-0"
                     >
                       {rec.priority}
                     </Badge>
                   </div>
-                  <p className="text-xs text-gray-600">{rec.description}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{rec.description}</p>
                 </div>
               ))}
             </div>
@@ -179,10 +174,10 @@ function AdminDashboard({ name }: { name: string }) {
 /* ------------------------------------------------------------------ */
 function StaffDashboard({ name }: { name: string }) {
   const stats = [
-    { label: "My Check-outs Today", value: "14", icon: Clock, color: "bg-blue-500" },
-    { label: "Pending Returns", value: "23", icon: Library, color: "bg-orange-500" },
-    { label: "Items to Shelve", value: "9", icon: BookOpen, color: "bg-green-500" },
-    { label: "Overdue Notices", value: "3", icon: AlertCircle, color: "bg-red-500" },
+    { label: "My Check-outs Today", value: "14", icon: Clock, accent: "bg-brand-navy/8 text-brand-navy" },
+    { label: "Pending Returns", value: "23", icon: Library, accent: "bg-brand-amber/10 text-brand-amber" },
+    { label: "Items to Shelve", value: "9", icon: BookOpen, accent: "bg-brand-sage/10 text-brand-sage" },
+    { label: "Overdue Notices", value: "3", icon: AlertCircle, accent: "bg-brand-brick/10 text-brand-brick" },
   ];
 
   const todaysTasks = [
@@ -201,57 +196,54 @@ function StaffDashboard({ name }: { name: string }) {
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-8 ">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Settings className="w-7 h-7 text-emerald-600" />
-          <h1 className="text-3xl font-semibold">Staff Dashboard</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-9 h-9 rounded-xl bg-brand-sage/10 flex items-center justify-center">
+            <Settings className="w-5 h-5 text-brand-sage" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
+            Staff Dashboard
+          </h1>
         </div>
-        <p className="text-gray-600">Welcome, {name}! Here&apos;s your daily workflow overview.</p>
+        <p className="text-sm text-muted-foreground ml-12">
+          Welcome, {name}. Here&apos;s your daily workflow overview.
+        </p>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        <Link href="/circulation">
-          <Card className="hover:border-emerald-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <Clock className="w-5 h-5 text-emerald-600" />
-              <span className="font-medium text-sm">Circulation Desk</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/catalog">
-          <Card className="hover:border-emerald-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <Library className="w-5 h-5 text-emerald-600" />
-              <span className="font-medium text-sm">Browse Catalog</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/ingest">
-          <Card className="hover:border-emerald-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <ScanLine className="w-5 h-5 text-emerald-600" />
-              <span className="font-medium text-sm">AI Ingest</span>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+        {[
+          { href: "/circulation", icon: Clock, label: "Circulation Desk" },
+          { href: "/catalog", icon: Library, label: "Browse Catalog" },
+          { href: "/ingest", icon: ScanLine, label: "AI Ingest" },
+        ].map((action) => (
+          <Link key={action.href} href={action.href}>
+            <Card className="group hover:border-brand-copper/40 hover:shadow-md hover:shadow-brand-copper/5 transition-all duration-200 cursor-pointer">
+              <CardContent className="py-3.5 px-4 flex items-center gap-3">
+                <action.icon className="w-4 h-4 text-brand-copper group-hover:scale-110 transition-transform" />
+                <span className="text-[13px] font-medium">{action.label}</span>
+                <ArrowRight className="w-3 h-3 ml-auto text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <Card key={stat.label}>
-              <CardContent className="pt-6">
+              <CardContent className="pt-5 pb-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-3xl font-semibold">{stat.value}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{stat.label}</p>
+                    <p className="text-2xl font-display font-semibold tracking-tight">{stat.value}</p>
                   </div>
-                  <div className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-white" />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.accent}`}>
+                    <Icon className="w-5 h-5" />
                   </div>
                 </div>
               </CardContent>
@@ -263,21 +255,21 @@ function StaffDashboard({ name }: { name: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Tasks */}
         <Card>
-          <CardHeader>
-            <CardTitle>Today&apos;s Tasks</CardTitle>
-            <CardDescription>Your shift checklist</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-display">Today&apos;s Tasks</CardTitle>
+            <CardDescription className="text-xs">Your shift checklist</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-0">
               {todaysTasks.map((item, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b last:border-0">
-                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                    item.status === "done" ? "bg-green-500" : item.status === "in-progress" ? "bg-yellow-500" : "bg-gray-300"
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-border/60 last:border-0">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    item.status === "done" ? "bg-brand-sage" : item.status === "in-progress" ? "bg-brand-amber" : "bg-border"
                   }`} />
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${item.status === "done" ? "line-through text-gray-400" : ""}`}>{item.task}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[13px] font-medium ${item.status === "done" ? "line-through text-muted-foreground" : ""}`}>{item.task}</p>
                   </div>
-                  <span className="text-xs text-gray-500">{item.time}</span>
+                  <span className="text-[11px] text-muted-foreground flex-shrink-0">{item.time}</span>
                 </div>
               ))}
             </div>
@@ -286,19 +278,19 @@ function StaffDashboard({ name }: { name: string }) {
 
         {/* Recent Circulation */}
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Circulation</CardTitle>
-            <CardDescription>Latest check-outs, returns &amp; renewals</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-display">Recent Circulation</CardTitle>
+            <CardDescription className="text-xs">Latest check-outs, returns &amp; renewals</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-0">
               {recentCirculation.map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">{item.action}: <span className="text-gray-600">{item.title}</span></p>
-                    <p className="text-xs text-gray-500">Patron: {item.patron}</p>
+                <div key={i} className="flex items-center justify-between py-2.5 border-b border-border/60 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium">{item.action}: <span className="text-muted-foreground font-normal">{item.title}</span></p>
+                    <p className="text-[11px] text-muted-foreground">Patron: {item.patron}</p>
                   </div>
-                  <span className="text-xs text-gray-400">{item.time}</span>
+                  <span className="text-[11px] text-muted-foreground flex-shrink-0 ml-4">{item.time}</span>
                 </div>
               ))}
             </div>
@@ -326,36 +318,42 @@ function PatronDashboard({ name }: { name: string }) {
   ];
 
   const stats = [
-    { label: "Books Borrowed", value: "3", icon: BookMarked, color: "bg-violet-500" },
-    { label: "Due Soon", value: "1", icon: CalendarClock, color: "bg-amber-500" },
-    { label: "Overdue", value: "1", icon: AlertCircle, color: "bg-red-500" },
-    { label: "Books Read (Total)", value: "27", icon: Star, color: "bg-emerald-500" },
+    { label: "Books Borrowed", value: "3", icon: BookMarked, accent: "bg-brand-navy/8 text-brand-navy" },
+    { label: "Due Soon", value: "1", icon: CalendarClock, accent: "bg-brand-amber/10 text-brand-amber" },
+    { label: "Overdue", value: "1", icon: AlertCircle, accent: "bg-brand-brick/10 text-brand-brick" },
+    { label: "Books Read (Total)", value: "27", icon: Star, accent: "bg-brand-sage/10 text-brand-sage" },
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-8 ">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <BookMarked className="w-7 h-7 text-violet-600" />
-          <h1 className="text-3xl font-semibold">My Library</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-9 h-9 rounded-xl bg-brand-navy/8 flex items-center justify-center">
+            <BookMarked className="w-5 h-5 text-brand-navy" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
+            My Library
+          </h1>
         </div>
-        <p className="text-gray-600">Welcome, {name}! Manage your loans and discover new reads.</p>
+        <p className="text-sm text-muted-foreground ml-12">
+          Welcome, {name}. Manage your loans and discover new reads.
+        </p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <Card key={stat.label}>
-              <CardContent className="pt-6">
+              <CardContent className="pt-5 pb-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-3xl font-semibold">{stat.value}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{stat.label}</p>
+                    <p className="text-2xl font-display font-semibold tracking-tight">{stat.value}</p>
                   </div>
-                  <div className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-white" />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.accent}`}>
+                    <Icon className="w-5 h-5" />
                   </div>
                 </div>
               </CardContent>
@@ -365,45 +363,43 @@ function PatronDashboard({ name }: { name: string }) {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <Link href="/catalog">
-          <Card className="hover:border-violet-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <Library className="w-5 h-5 text-violet-600" />
-              <span className="font-medium text-sm">Browse Catalog</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/map">
-          <Card className="hover:border-violet-300 transition-colors cursor-pointer">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <Map className="w-5 h-5 text-violet-600" />
-              <span className="font-medium text-sm">Library Map</span>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid grid-cols-2 gap-3 mb-8">
+        {[
+          { href: "/catalog", icon: Library, label: "Browse Catalog" },
+          { href: "/map", icon: Map, label: "Library Map" },
+        ].map((action) => (
+          <Link key={action.href} href={action.href}>
+            <Card className="group hover:border-brand-copper/40 hover:shadow-md hover:shadow-brand-copper/5 transition-all duration-200 cursor-pointer">
+              <CardContent className="py-3.5 px-4 flex items-center gap-3">
+                <action.icon className="w-4 h-4 text-brand-copper group-hover:scale-110 transition-transform" />
+                <span className="text-[13px] font-medium">{action.label}</span>
+                <ArrowRight className="w-3 h-3 ml-auto text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* My Current Loans */}
+        {/* Current Loans */}
         <Card>
-          <CardHeader>
-            <CardTitle>My Current Loans</CardTitle>
-            <CardDescription>Books you currently have checked out</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-display">My Current Loans</CardTitle>
+            <CardDescription className="text-xs">Books you currently have checked out</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-0">
               {myBooks.map((book, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b last:border-0">
-                  <div>
-                    <p className="font-medium text-sm">{book.title}</p>
-                    <p className="text-xs text-gray-500">{book.author}</p>
+                <div key={i} className="flex items-center justify-between py-3 border-b border-border/60 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium">{book.title}</p>
+                    <p className="text-[11px] text-muted-foreground">{book.author}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Due: {book.dueDate}</p>
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <p className="text-[11px] text-muted-foreground">Due: {book.dueDate}</p>
                     <Badge
                       variant={book.status === "overdue" ? "destructive" : book.status === "due-soon" ? "secondary" : "outline"}
-                      className="text-xs mt-1"
+                      className="text-[10px] px-2 py-0.5 mt-1"
                     >
                       {book.status === "overdue" ? `${Math.abs(book.daysLeft)}d overdue` : `${book.daysLeft}d left`}
                     </Badge>
@@ -411,7 +407,7 @@ function PatronDashboard({ name }: { name: string }) {
                 </div>
               ))}
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
+            <Button variant="outline" size="sm" className="w-full mt-4 text-xs">
               View Full Loan History
             </Button>
           </CardContent>
@@ -419,19 +415,19 @@ function PatronDashboard({ name }: { name: string }) {
 
         {/* Recommendations */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-500" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-display">
+              <Star className="w-4 h-4 text-brand-amber" />
               Recommended for You
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recommendations.map((rec, i) => (
-                <div key={i} className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-medium text-sm">{rec.title}</p>
-                  <p className="text-xs text-gray-500 mb-1">by {rec.author}</p>
-                  <p className="text-xs text-violet-600">{rec.reason}</p>
+                <div key={i} className="p-3 bg-secondary/60 rounded-xl">
+                  <p className="text-[13px] font-medium">{rec.title}</p>
+                  <p className="text-[11px] text-muted-foreground mb-1">by {rec.author}</p>
+                  <p className="text-[11px] text-brand-copper font-medium">{rec.reason}</p>
                 </div>
               ))}
             </div>
@@ -443,7 +439,7 @@ function PatronDashboard({ name }: { name: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  MAIN PAGE — routes to role-specific dashboard                      */
+/*  MAIN PAGE                                                          */
 /* ------------------------------------------------------------------ */
 export default function DashboardPage() {
   const { user } = useAuth();

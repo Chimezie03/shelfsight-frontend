@@ -119,7 +119,7 @@ function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNod
           className={cn(
             "group relative rounded-lg border bg-card text-card-foreground shadow-sm transition-all",
             "hover:shadow-md",
-            selected && "ring-2 ring-indigo-600 ring-offset-1 ring-offset-background"
+            selected && "ring-2 ring-brand-copper ring-offset-1 ring-offset-background"
           )}
           style={{
             width: "100%",
@@ -135,8 +135,8 @@ function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNod
             minWidth={120}
             minHeight={60}
             isVisible={!!selected}
-            lineClassName="!border-indigo-400"
-            handleClassName="!h-2 !w-2 !rounded-sm !border-2 !border-indigo-400 !bg-background"
+            lineClassName="!border-brand-copper"
+            handleClassName="!h-2 !w-2 !rounded-sm !border-2 !border-brand-copper !bg-background"
           />
           {/* Node content */}
           <div className="flex h-full flex-col justify-between p-1.5 overflow-hidden">
@@ -157,11 +157,11 @@ function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNod
                     onChange={(e) => setEditValue(e.target.value)}
                     onBlur={commitEdit}
                     onKeyDown={handleEditKeyDown}
-                    className="w-full bg-transparent text-xs font-semibold outline-none border-b border-indigo-400 pb-0.5"
+                    className="w-full bg-transparent text-xs font-display font-semibold outline-none border-b border-brand-copper pb-0.5"
                   />
                 ) : (
                   <p
-                    className="truncate text-xs font-semibold cursor-text"
+                    className="truncate text-xs font-display font-semibold cursor-text"
                     onDoubleClick={handleDoubleClick}
                     title={data.label}
                   >
