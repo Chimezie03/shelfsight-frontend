@@ -2,7 +2,7 @@
 
 **Week 4 | February 24, 2026 - March 2, 2026**
 
-**Leader:** Mirza Baig
+**Leader:** Kaelen Raible
 
 ---
 
@@ -54,11 +54,14 @@
 | Name | Details |
 |------|---------|
 | **Kaelen Raible** | **Tasks completed:** |
-| | • *(Fill in)* |
-| **Time Spent:** __ hours | **Planned tasks for next week:** |
-| | • *(Fill in)* |
+| | • Implemented backend authentication points |
+| | • Setup user roles(Admin, Staff, Patron) and basic user model in db |
+| | • Completed basic book API(createBook, updateBook, deleteBook) and user API(getUsers, createUser, updateUser, deleteUser) |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Begin circulation logic |
+| | • Loan API setup|
 | | **Any issues or challenges:** |
-| | • *(Fill in)* |
+| | • Initial seeding needed to be re-written for auth testing |
 
 ---
 
