@@ -15,6 +15,7 @@
 | | • Built shelf viewer modal showing book spines per tier with hover tooltips and status indicators |
 | | • Added 360-degree node rotation with slider and preset buttons |
 | | • Implemented undo/redo history, node resizing, snap-to-grid, and canvas export |
+| | • Completely Redesigned frontend with more modern branding and ui|
 | **Time Spent:** 16 hours | **Planned tasks for next week:** |
 | | • Continue iterating on the map feature based on feedback |
 | | • Work on improving other frontend pages |
