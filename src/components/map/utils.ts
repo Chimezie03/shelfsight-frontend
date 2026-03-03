@@ -10,14 +10,14 @@ export const getCapacityFill = (used: number, capacity: number) => {
   const percent = getCapacityPercent(used, capacity);
 
   if (percent >= 90) {
-    return "#DC2626";
+    return "#C4454D"; // brand-brick
   }
 
   if (percent >= 75) {
-    return "#F97316";
+    return "#D4A026"; // brand-amber
   }
 
-  return "#16A34A";
+  return "#3D8B7A"; // brand-sage
 };
 
 export const getCapacityLabel = (used: number, capacity: number) => {

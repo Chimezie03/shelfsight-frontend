@@ -133,11 +133,11 @@ export default function CatalogPage() {
   const getStatusBadge = (status: Book["status"]) => {
     switch (status) {
       case "available":
-        return <Badge className="bg-green-500">Available</Badge>;
+        return <Badge className="bg-brand-sage/15 text-brand-sage border-0 text-[10px]">Available</Badge>;
       case "checked-out":
-        return <Badge className="bg-orange-500">Checked Out</Badge>;
+        return <Badge className="bg-brand-amber/15 text-brand-amber border-0 text-[10px]">Checked Out</Badge>;
       case "maintenance":
-        return <Badge className="bg-gray-500">Maintenance</Badge>;
+        return <Badge className="bg-muted text-muted-foreground border-0 text-[10px]">Maintenance</Badge>;
     }
   };
 
@@ -145,66 +145,68 @@ export default function CatalogPage() {
   const statuses = ["all", "available", "checked-out", "maintenance"];
 
   return (
-    <div className="p-8">
+    <div className="p-8 ">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold mb-2">Library Catalog</h1>
-        <p className="text-gray-600">Search and manage your book collection</p>
+        <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight mb-1">Library Catalog</h1>
+        <p className="text-sm text-muted-foreground">Search and manage your book collection</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Books</p>
-                <p className="text-2xl font-semibold mt-1">{mockBooks.length}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Books</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">{mockBooks.length}</p>
               </div>
-              <BookOpen className="w-8 h-8 text-indigo-600" />
+              <div className="w-10 h-10 rounded-xl bg-brand-navy/8 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-brand-navy" />
+              </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Available</p>
-                <p className="text-2xl font-semibold mt-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Available</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">
                   {mockBooks.filter((b) => b.status === "available").length}
                 </p>
               </div>
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+              <div className="w-10 h-10 rounded-xl bg-brand-sage/10 flex items-center justify-center">
+                <div className="w-3 h-3 bg-brand-sage rounded-full"></div>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Checked Out</p>
-                <p className="text-2xl font-semibold mt-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checked Out</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">
                   {mockBooks.filter((b) => b.status === "checked-out").length}
                 </p>
               </div>
-              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+              <div className="w-10 h-10 rounded-xl bg-brand-amber/10 flex items-center justify-center">
+                <div className="w-3 h-3 bg-brand-amber rounded-full"></div>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Copies</p>
-                <p className="text-2xl font-semibold mt-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Copies</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">
                   {mockBooks.reduce((acc, book) => acc + book.copies, 0)}
                 </p>
               </div>
-              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-indigo-600" />
+              <div className="w-10 h-10 rounded-xl bg-brand-copper/10 flex items-center justify-center">
+                <BookOpen className="w-4 h-4 text-brand-copper" />
               </div>
             </div>
           </CardContent>
@@ -213,16 +215,16 @@ export default function CatalogPage() {
 
       {/* Search and Filters */}
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-display">
+            <Filter className="w-4 h-4 text-brand-copper" />
             Search & Filter
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="md:col-span-2 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search by title, author, ISBN, or Dewey number..."
                 value={searchQuery}
@@ -260,11 +262,11 @@ export default function CatalogPage() {
 
       {/* Results */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-base font-display">
             <span>Catalog Results ({filteredBooks.length})</span>
-            <Button>
-              <BookOpen className="w-4 h-4 mr-2" />
+            <Button className="bg-brand-navy hover:bg-brand-navy/90 text-white text-xs">
+              <BookOpen className="w-3.5 h-3.5 mr-2" />
               Add New Book
             </Button>
           </CardTitle>
@@ -274,49 +276,49 @@ export default function CatalogPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>ISBN</TableHead>
-                  <TableHead>Dewey</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Copies</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Title</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Author</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">ISBN</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Dewey</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Category</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Location</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Copies</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredBooks.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-12 text-[13px] text-muted-foreground">
                       No books found matching your search criteria
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredBooks.map((book) => (
-                    <TableRow key={book.id}>
-                      <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell>{book.author}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{book.isbn}</TableCell>
+                    <TableRow key={book.id} className="hover:bg-secondary/40">
+                      <TableCell className="text-[13px] font-medium">{book.title}</TableCell>
+                      <TableCell className="text-[13px]">{book.author}</TableCell>
+                      <TableCell className="text-[12px] text-muted-foreground font-mono">{book.isbn}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{book.dewey}</Badge>
+                        <Badge variant="outline" className="text-[10px] font-mono">{book.dewey}</Badge>
                       </TableCell>
-                      <TableCell>{book.category}</TableCell>
+                      <TableCell className="text-[13px]">{book.category}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 text-sm">
-                          <MapPin className="w-3 h-3 text-gray-400" />
+                        <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
+                          <MapPin className="w-3 h-3" />
                           {book.location}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(book.status)}</TableCell>
-                      <TableCell className="text-center">{book.copies}</TableCell>
+                      <TableCell className="text-center text-[13px]">{book.copies}</TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Edit className="w-3.5 h-3.5" />
                           </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
                           </Button>
                         </div>
                       </TableCell>

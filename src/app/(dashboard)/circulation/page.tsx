@@ -112,11 +112,11 @@ export default function CirculationPage() {
   const getStatusBadge = (status: Transaction["status"]) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-blue-500">Active</Badge>;
+        return <Badge className="bg-brand-navy/10 text-brand-navy border-0 text-[10px]">Active</Badge>;
       case "overdue":
-        return <Badge className="bg-red-500">Overdue</Badge>;
+        return <Badge className="bg-brand-brick/12 text-brand-brick border-0 text-[10px]">Overdue</Badge>;
       case "returned":
-        return <Badge className="bg-green-500">Returned</Badge>;
+        return <Badge className="bg-brand-sage/12 text-brand-sage border-0 text-[10px]">Returned</Badge>;
     }
   };
 
@@ -129,59 +129,67 @@ export default function CirculationPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-8 ">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold mb-2">Circulation Management</h1>
-        <p className="text-gray-600">Handle check-ins, check-outs, and manage transactions</p>
+        <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight mb-1">Circulation Management</h1>
+        <p className="text-sm text-muted-foreground">Handle check-ins, check-outs, and manage transactions</p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Loans</p>
-                <p className="text-2xl font-semibold mt-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Loans</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">
                   {mockTransactions.filter((t) => t.status === "active").length}
                 </p>
               </div>
-              <BookOpen className="w-8 h-8 text-blue-600" />
+              <div className="w-10 h-10 rounded-xl bg-brand-navy/8 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-brand-navy" />
+              </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Overdue Items</p>
-                <p className="text-2xl font-semibold mt-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overdue Items</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">
                   {mockTransactions.filter((t) => t.status === "overdue").length}
                 </p>
               </div>
-              <AlertCircle className="w-8 h-8 text-red-600" />
+              <div className="w-10 h-10 rounded-xl bg-brand-brick/10 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-brand-brick" />
+              </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Returns Today</p>
-                <p className="text-2xl font-semibold mt-1">5</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Returns Today</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">5</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="w-10 h-10 rounded-xl bg-brand-sage/10 flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-brand-sage" />
+              </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Outstanding Fines</p>
-                <p className="text-2xl font-semibold mt-1">$28.50</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Outstanding Fines</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">$28.50</p>
               </div>
-              <DollarSign className="w-8 h-8 text-orange-600" />
+              <div className="w-10 h-10 rounded-xl bg-brand-amber/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-brand-amber" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -193,21 +201,21 @@ export default function CirculationPage() {
           <TabsTrigger value="transactions">Active Transactions</TabsTrigger>
         </TabsList>
 
-        {/* Check-Out/Check-In Tab */}
+        {/* Check-Out Tab */}
         <TabsContent value="checkout" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Member Search */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserCircle className="w-5 h-5" />
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base font-display">
+                  <UserCircle className="w-4 h-4 text-brand-copper" />
                   Select Member
                 </CardTitle>
-                <CardDescription>Search by name or member number</CardDescription>
+                <CardDescription className="text-xs">Search by name or member number</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search member..."
                     value={searchQuery}
@@ -227,18 +235,20 @@ export default function CirculationPage() {
                       <button
                         key={member.id}
                         onClick={() => setSelectedMember(member)}
-                        className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${
                           selectedMember?.id === member.id
-                            ? "border-indigo-600 bg-indigo-50"
-                            : "border-gray-200 hover:border-gray-300 bg-white"
+                            ? "border-brand-copper bg-brand-copper/5 shadow-sm"
+                            : "border-border hover:border-brand-copper/30 bg-card"
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium">{member.name}</p>
-                            <p className="text-sm text-gray-600">{member.memberNumber}</p>
+                            <p className="text-[13px] font-medium">{member.name}</p>
+                            <p className="text-[11px] text-muted-foreground">{member.memberNumber}</p>
                           </div>
-                          <Badge variant={member.status === "active" ? "default" : "destructive"}>
+                          <Badge
+                            className={`text-[10px] border-0 ${member.status === "active" ? "bg-brand-sage/12 text-brand-sage" : "bg-brand-brick/12 text-brand-brick"}`}
+                          >
                             {member.status}
                           </Badge>
                         </div>
@@ -247,10 +257,10 @@ export default function CirculationPage() {
                 </div>
 
                 {selectedMember && (
-                  <div className="p-4 bg-indigo-50 rounded-lg">
-                    <p className="text-sm font-medium text-indigo-900">Selected Member</p>
-                    <p className="text-lg font-semibold mt-1">{selectedMember.name}</p>
-                    <p className="text-sm text-indigo-700">{selectedMember.email}</p>
+                  <div className="p-3 bg-brand-copper/5 rounded-xl border border-brand-copper/15">
+                    <p className="text-[11px] font-medium text-brand-copper">Selected Member</p>
+                    <p className="text-[15px] font-semibold mt-0.5">{selectedMember.name}</p>
+                    <p className="text-[12px] text-muted-foreground">{selectedMember.email}</p>
                   </div>
                 )}
               </CardContent>
@@ -258,16 +268,16 @@ export default function CirculationPage() {
 
             {/* Book Search */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base font-display">
+                  <BookOpen className="w-4 h-4 text-brand-copper" />
                   Select Book
                 </CardTitle>
-                <CardDescription>Search by title or ISBN</CardDescription>
+                <CardDescription className="text-xs">Search by title or ISBN</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input placeholder="Search book..." className="pl-10" />
                 </div>
 
@@ -277,20 +287,22 @@ export default function CirculationPage() {
                       key={book.id}
                       onClick={() => book.available && setSelectedBook(book)}
                       disabled={!book.available}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                      className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${
                         selectedBook?.id === book.id
-                          ? "border-indigo-600 bg-indigo-50"
+                          ? "border-brand-copper bg-brand-copper/5 shadow-sm"
                           : book.available
-                          ? "border-gray-200 hover:border-gray-300 bg-white"
-                          : "border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed"
+                          ? "border-border hover:border-brand-copper/30 bg-card"
+                          : "border-border bg-muted/40 opacity-50 cursor-not-allowed"
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{book.title}</p>
-                          <p className="text-sm text-gray-600">{book.isbn}</p>
+                          <p className="text-[13px] font-medium">{book.title}</p>
+                          <p className="text-[11px] text-muted-foreground font-mono">{book.isbn}</p>
                         </div>
-                        <Badge variant={book.available ? "default" : "secondary"}>
+                        <Badge
+                          className={`text-[10px] border-0 ${book.available ? "bg-brand-sage/12 text-brand-sage" : "bg-muted text-muted-foreground"}`}
+                        >
                           {book.available ? "Available" : "Checked Out"}
                         </Badge>
                       </div>
@@ -299,29 +311,29 @@ export default function CirculationPage() {
                 </div>
 
                 {selectedBook && (
-                  <div className="p-4 bg-indigo-50 rounded-lg">
-                    <p className="text-sm font-medium text-indigo-900">Selected Book</p>
-                    <p className="text-lg font-semibold mt-1">{selectedBook.title}</p>
-                    <p className="text-sm text-indigo-700">{selectedBook.isbn}</p>
+                  <div className="p-3 bg-brand-copper/5 rounded-xl border border-brand-copper/15">
+                    <p className="text-[11px] font-medium text-brand-copper">Selected Book</p>
+                    <p className="text-[15px] font-semibold mt-0.5">{selectedBook.title}</p>
+                    <p className="text-[12px] text-muted-foreground font-mono">{selectedBook.isbn}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Check-Out Action */}
+          {/* Transaction Card */}
           <Card>
-            <CardHeader>
-              <CardTitle>Complete Transaction</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-display">Complete Transaction</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm text-gray-600">Checkout Date</Label>
+                  <Label className="text-[11px] text-muted-foreground">Checkout Date</Label>
                   <Input type="date" value="2026-02-17" readOnly className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-600">Due Date (14 days)</Label>
+                  <Label className="text-[11px] text-muted-foreground">Due Date (14 days)</Label>
                   <Input type="date" value="2026-03-03" readOnly className="mt-1" />
                 </div>
               </div>
@@ -330,13 +342,14 @@ export default function CirculationPage() {
                 <Button
                   onClick={handleCheckOut}
                   disabled={!selectedMember || !selectedBook}
-                  className="flex-1"
+                  className="flex-1 bg-brand-navy hover:bg-brand-navy/90 text-white text-xs"
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <CheckCircle className="w-3.5 h-3.5 mr-2" />
                   Complete Check-Out
                 </Button>
                 <Button
                   variant="outline"
+                  className="text-xs"
                   onClick={() => {
                     setSelectedMember(null);
                     setSelectedBook(null);
@@ -352,21 +365,21 @@ export default function CirculationPage() {
         {/* Active Transactions Tab */}
         <TabsContent value="transactions">
           <Card>
-            <CardHeader>
-              <CardTitle>Active Loans & Overdue Items</CardTitle>
-              <CardDescription>Manage current circulation and process returns</CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-display">Active Loans & Overdue Items</CardTitle>
+              <CardDescription className="text-xs">Manage current circulation and process returns</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Book Title</TableHead>
-                    <TableHead>Member</TableHead>
-                    <TableHead>Checkout Date</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Fine</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Book Title</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Member</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Checkout Date</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Due Date</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Fine</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -375,31 +388,31 @@ export default function CirculationPage() {
                     .map((transaction) => {
                       const daysOverdue = calculateDaysOverdue(transaction.dueDate);
                       return (
-                        <TableRow key={transaction.id}>
+                        <TableRow key={transaction.id} className="hover:bg-secondary/40">
                           <TableCell>
                             <div>
-                              <p className="font-medium">{transaction.bookTitle}</p>
-                              <p className="text-xs text-gray-500">{transaction.bookISBN}</p>
+                              <p className="text-[13px] font-medium">{transaction.bookTitle}</p>
+                              <p className="text-[11px] text-muted-foreground font-mono">{transaction.bookISBN}</p>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-medium text-sm">{transaction.memberName}</p>
-                              <p className="text-xs text-gray-500">{transaction.memberNumber}</p>
+                              <p className="text-[13px] font-medium">{transaction.memberName}</p>
+                              <p className="text-[11px] text-muted-foreground">{transaction.memberNumber}</p>
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-gray-400" />
+                          <TableCell className="text-[12px]">
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Calendar className="w-3 h-3" />
                               {new Date(transaction.checkoutDate).toLocaleDateString()}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-gray-400" />
+                          <TableCell className="text-[12px]">
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Clock className="w-3 h-3" />
                               {new Date(transaction.dueDate).toLocaleDateString()}
                               {daysOverdue > 0 && (
-                                <span className="text-xs text-red-600 ml-2">
+                                <span className="text-[10px] text-brand-brick ml-1">
                                   ({daysOverdue}d overdue)
                                 </span>
                               )}
@@ -407,7 +420,7 @@ export default function CirculationPage() {
                           </TableCell>
                           <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                           <TableCell>
-                            <span className={transaction.fine > 0 ? "text-red-600 font-medium" : ""}>
+                            <span className={`text-[13px] ${transaction.fine > 0 ? "text-brand-brick font-medium" : "text-muted-foreground"}`}>
                               ${transaction.fine.toFixed(2)}
                             </span>
                           </TableCell>
@@ -416,8 +429,9 @@ export default function CirculationPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handleCheckIn()}
+                                className="bg-brand-navy hover:bg-brand-navy/90 text-white text-[11px] h-8"
                               >
-                                <CheckCircle className="w-4 h-4 mr-1" />
+                                <CheckCircle className="w-3 h-3 mr-1" />
                                 Check In
                               </Button>
                             </div>

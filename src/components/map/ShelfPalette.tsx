@@ -56,19 +56,19 @@ function DraggableTemplateCard({ template }: { template: ShelfTemplate }) {
       {...attributes}
       className={cn(
         "flex items-center gap-2 rounded-lg border bg-card p-2 cursor-grab transition-colors",
-        "hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/20",
+        "hover:border-brand-copper/40 hover:bg-brand-copper/5 dark:hover:border-brand-copper/30 dark:hover:bg-brand-copper/10",
         "active:cursor-grabbing",
         isDragging && "opacity-50 shadow-lg"
       )}
     >
       <div
-        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-indigo-100 dark:bg-indigo-900/30"
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-brand-copper/10 dark:bg-brand-copper/20"
       >
-        {Icon && <Icon className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />}
+        {Icon && <Icon className="h-3.5 w-3.5 text-brand-copper dark:text-brand-copper" />}
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-medium truncate">{template.label}</p>
-        <p className="text-[10px] text-muted-foreground leading-tight">
+        <p className="text-[13px] font-medium truncate">{template.label}</p>
+        <p className="text-[11px] text-muted-foreground leading-tight">
           {template.description}
         </p>
       </div>
@@ -105,9 +105,9 @@ export function ShelfPalette({ isOpen, onToggle }: ShelfPaletteProps) {
             <div className="flex h-full w-[220px] flex-col">
               {/* Header */}
               <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
-                <h3 className="text-xs font-semibold">Shelf Templates</h3>
+                <h3 className="text-sm font-display font-semibold">Shelf Templates</h3>
               </div>
-              <p className="px-3 pb-1.5 text-[10px] text-muted-foreground">
+              <p className="px-3 pb-1.5 text-xs text-muted-foreground">
                 Drag a template onto the canvas to add it.
               </p>
 
