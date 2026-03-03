@@ -57,11 +57,15 @@
 | Name | Details |
 |------|---------|
 | **Syed Hasan** | **Tasks completed:** |
-| | • Drafted full technical specs including feature list with explicit in/out scope boundaries, a system architecture diagram showing how frontend, backend, and AI/data layers connect, and clear separation of concerns across all three domains. |
-| **Time Spent:** 4 hours | **Planned tasks for next week:** |
-| | • TBD |
+| | • Conducted sprint planning session and broke down Week 4 feature implementation tasks
+• Drafted initial AI agentic development specification outlining OCR agent, metadata enrichment agent, Dewey classification logic, and advisory recommendation agent
+• Formalized authentication architecture boundaries and RBAC enforcement model
+• Reviewed backend structure for separation of concerns (routes, controllers, services, middleware) |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Implement additional backend API endpoints and route validation
+• Assist with connecting frontend components to backend APIs |
 | | **Any issues or challenges:** |
-| |  |
+| | • Aligning AI architecture with current MVP scope while avoiding over-engineering required narrowing the initial agent design |
 
 ---
 
