@@ -9,11 +9,17 @@
 | Name | Details |
 |------|---------|
 | **Mirza Baig** | **Tasks completed:** |
-| | • *(Fill in)* |
-| **Time Spent:** __ hours | **Planned tasks for next week:** |
-| | • *(Fill in)* |
+| | • Rebuilt the interactive library map page using React Flow with drag-and-drop shelf placement |
+| | • Designed and implemented custom shelf nodes with compact UI, color coding, and capacity indicators |
+| | • Added shelf settings panel with editable fields (name, category, Dewey range, tiers, rotation, etc.) |
+| | • Built shelf viewer modal showing book spines per tier with hover tooltips and status indicators |
+| | • Added 360-degree node rotation with slider and preset buttons |
+| | • Implemented undo/redo history, node resizing, snap-to-grid, and canvas export |
+| **Time Spent:** 16 hours | **Planned tasks for next week:** |
+| | • Continue iterating on the map feature based on feedback |
+| | • Work on improving other frontend pages |
 | | **Any issues or challenges:** |
-| | • *(Fill in)* |
+| | • React Flow has no native rotation support — solved with CSS transforms on the node component |
 
 ---
 
