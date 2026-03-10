@@ -48,11 +48,12 @@
 | Name | Details |
 |------|---------|
 | **Chimezie Nnawuihe** | **Tasks completed:** |
-| | • TBD |
-| **Time Spent:** TBD | **Planned tasks for next week:** |
-| | • TBD |
+| | • Built and integrated the Members page with live backend data from /users (name, email, role listing). |
+| | • Implemented clickable member profile view showing user details, active loans, and fine summary using /loans data. |
+| **Time Spent:** 12 | **Planned tasks for next week:** |
+| | • Continue working on the remaining UI pages |
 | | **Any issues or challenges:** |
-| | • TBD |
+| | • Network issues |
 
 ---
 
