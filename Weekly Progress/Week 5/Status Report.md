@@ -59,11 +59,16 @@
 | Name | Details |
 |------|---------|
 | **Kaelen Raible** | **Tasks completed:** |
-| | • TBD |
-| **Time Spent:** TBD | **Planned tasks for next week:** |
-| | • TBD |
+| | • Built out `/loans/checkout` endpoint with validation for book copy availability, duplicate active loan checks, and due date assignment |
+| | • Built out `/loans/checkin` endpoint with loan lookup, return date recording, and automatic fine calculation for overdue returns |
+| | • Implemented loan listing endpoint (`GET /loans`) with query support for filtering by status (active, returned, overdue), userId, and pagination |
+| | • Completed core circulation API skeleton — the next critical API surface for the MVP flow |
+| **Time Spent:** 10 hours | **Planned tasks for next week:** |
+| | • Test all CRUD endpoints (Books, Members, Loans)|
+| | • Add basic circulation logic refinements (due date rules, overdue status checks, fine calculation edge cases) |
+| | • Begin connecting frontend to backend API |
 | | **Any issues or challenges:** |
-| | • TBD |
+| | • Ensuring checkout correctly validates copy availability vs. book-level availability required careful query design |
 
 ---
 
