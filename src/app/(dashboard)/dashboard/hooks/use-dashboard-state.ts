@@ -2,39 +2,131 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { generateAdminData, generateStaffData, generatePatronData } from "../mock-data";
-import type { CirculationRangePreset, StaffTask } from "../types";
+import { useAuth } from "@/components/auth-provider";
+import {
+  fetchAdminDashboard,
+  fetchStaffDashboard,
+  fetchPatronDashboard,
+  buildCirculationTrend,
+  type BackendLoan,
+} from "@/lib/dashboard";
+import type {
+  CirculationRangePreset,
+  StaffTask,
+  AdminDashboardData,
+  StaffDashboardData,
+  PatronDashboardData,
+} from "../types";
 
-function getInitialTasks(): StaffTask[] {
-  return generateStaffData().tasks;
-}
+const EMPTY_ADMIN: AdminDashboardData = {
+  kpis: [],
+  circulationTrend: [],
+  collectionHealth: [],
+  activityFeed: [],
+  aiInsights: [],
+  popularBooks: [],
+  overdueCount: 0,
+  overdueFinesTotal: 0,
+};
+
+const EMPTY_STAFF: StaffDashboardData = {
+  kpis: [],
+  tasks: [],
+  circulationFeed: [],
+  pendingReturns: [],
+  shiftProgress: { completed: 0, total: 0 },
+};
+
+const EMPTY_PATRON: PatronDashboardData = {
+  kpis: [],
+  currentLoans: [],
+  readingActivity: [],
+  recommendations: [],
+  fineSummary: null,
+  announcements: [],
+  readingGoal: { target: 0, current: 0, year: new Date().getFullYear() },
+};
 
 export function useDashboardState() {
+  const { user } = useAuth();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [adminData, setAdminData] = useState<AdminDashboardData>(EMPTY_ADMIN);
+  const [staffData, setStaffData] = useState<StaffDashboardData>(EMPTY_STAFF);
+  const [patronData, setPatronData] = useState<PatronDashboardData>(EMPTY_PATRON);
+  const [rawLoans, setRawLoans] = useState<BackendLoan[]>([]);
+
   const [circulationRange, setCirculationRange] = useState<CirculationRangePreset>("7d");
   const [overdueBannerDismissed, setOverdueBannerDismissed] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [staffTasks, setStaffTasks] = useState<StaffTask[]>(getInitialTasks);
+  const [staffTasks, setStaffTasks] = useState<StaffTask[]>([]);
 
-  // Simulate loading
+  // Fetch data based on role
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!user) return;
+    let cancelled = false;
 
-  const adminData = useMemo(() => generateAdminData(circulationRange), [circulationRange]);
+    async function load() {
+      setIsLoading(true);
+      try {
+        switch (user!.role) {
+          case "ADMIN": {
+            const result = await fetchAdminDashboard(circulationRange);
+            if (!cancelled) {
+              setAdminData(result.data);
+              setRawLoans(result.rawLoans);
+            }
+            break;
+          }
+          case "STAFF": {
+            const data = await fetchStaffDashboard();
+            if (!cancelled) {
+              setStaffData((prev) => ({
+                ...data,
+                tasks: staffTasks,
+                shiftProgress: {
+                  completed: staffTasks.filter((t) => t.status === "done").length,
+                  total: staffTasks.length,
+                },
+              }));
+            }
+            break;
+          }
+          case "PATRON": {
+            const data = await fetchPatronDashboard(user!.userId);
+            if (!cancelled) setPatronData(data);
+            break;
+          }
+        }
+      } catch {
+        toast.error("Failed to load dashboard data");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
 
-  const staffDataBase = useMemo(() => generateStaffData(), []);
+    load();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role, user?.userId]);
 
-  const staffData = useMemo(() => {
+  // Recompute circulation trend when range changes (no re-fetch needed)
+  const adminDataWithTrend = useMemo(() => {
+    if (rawLoans.length === 0) return adminData;
+    return {
+      ...adminData,
+      circulationTrend: buildCirculationTrend(rawLoans, circulationRange),
+    };
+  }, [adminData, rawLoans, circulationRange]);
+
+  // Keep staff data in sync with task mutations
+  const staffDataWithTasks = useMemo(() => {
     const completed = staffTasks.filter((t) => t.status === "done").length;
     return {
-      ...staffDataBase,
+      ...staffData,
       tasks: staffTasks,
       shiftProgress: { completed, total: staffTasks.length },
     };
-  }, [staffDataBase, staffTasks]);
-
-  const patronData = useMemo(() => generatePatronData(), []);
+  }, [staffData, staffTasks]);
 
   const dismissOverdueBanner = useCallback(() => {
     setOverdueBannerDismissed(true);
@@ -63,8 +155,8 @@ export function useDashboardState() {
   }, [patronData.currentLoans]);
 
   return {
-    adminData,
-    staffData,
+    adminData: adminDataWithTrend,
+    staffData: staffDataWithTasks,
     patronData,
     circulationRange,
     setCirculationRange,
