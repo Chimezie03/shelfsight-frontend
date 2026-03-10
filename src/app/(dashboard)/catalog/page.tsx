@@ -1,148 +1,197 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, BookOpen, MapPin, Edit, Trash2 } from "lucide-react";
+import { Search, Filter, BookOpen, Edit, Trash2, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 interface Book {
   id: string;
   title: string;
   author: string;
   isbn: string;
-  dewey: string;
-  category: string;
-  location: string;
-  status: "available" | "checked-out" | "maintenance";
-  copies: number;
+  genre: string | null;
+  deweyDecimal: string | null;
+  coverImageUrl: string | null;
+  availableCopies: number;
+  totalCopies: number;
+  createdAt: string;
+}
+
+interface BooksResponse {
+  data: Book[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export default function CatalogPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [genreFilter, setGenreFilter] = useState("all");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [allGenres, setAllGenres] = useState<string[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const addTitleRef = useRef<HTMLInputElement>(null);
+  const addAuthorRef = useRef<HTMLInputElement>(null);
+  const addIsbnRef = useRef<HTMLInputElement>(null);
+  const addGenreRef = useRef<HTMLInputElement>(null);
+  const addDeweyRef = useRef<HTMLInputElement>(null);
+  const editTitleRef = useRef<HTMLInputElement>(null);
+  const editAuthorRef = useRef<HTMLInputElement>(null);
+  const editIsbnRef = useRef<HTMLInputElement>(null);
+  const editGenreRef = useRef<HTMLInputElement>(null);
+  const editDeweyRef = useRef<HTMLInputElement>(null);
 
-  const mockBooks: Book[] = [
-    {
-      id: "1",
-      title: "The Great Gatsby",
-      author: "F. Scott Fitzgerald",
-      isbn: "978-0-7432-7356-5",
-      dewey: "813.52",
-      category: "Fiction",
-      location: "Section A-2, Shelf 3",
-      status: "available",
-      copies: 3,
-    },
-    {
-      id: "2",
-      title: "To Kill a Mockingbird",
-      author: "Harper Lee",
-      isbn: "978-0-06-112008-4",
-      dewey: "813.54",
-      category: "Fiction",
-      location: "Section B-1, Shelf 2",
-      status: "checked-out",
-      copies: 2,
-    },
-    {
-      id: "3",
-      title: "1984",
-      author: "George Orwell",
-      isbn: "978-0-452-28423-4",
-      dewey: "823.912",
-      category: "Fiction",
-      location: "Section B-1, Shelf 5",
-      status: "available",
-      copies: 4,
-    },
-    {
-      id: "4",
-      title: "Sapiens: A Brief History of Humankind",
-      author: "Yuval Noah Harari",
-      isbn: "978-0-06-231609-7",
-      dewey: "909",
-      category: "Non-Fiction",
-      location: "Section C-1, Shelf 4",
-      status: "available",
-      copies: 2,
-    },
-    {
-      id: "5",
-      title: "A Brief History of Time",
-      author: "Stephen Hawking",
-      isbn: "978-0-553-38016-3",
-      dewey: "530.1",
-      category: "Science",
-      location: "Section C-1, Shelf 8",
-      status: "maintenance",
-      copies: 1,
-    },
-    {
-      id: "6",
-      title: "Pride and Prejudice",
-      author: "Jane Austen",
-      isbn: "978-0-14-143951-8",
-      dewey: "823.7",
-      category: "Fiction",
-      location: "Section A-1, Shelf 1",
-      status: "available",
-      copies: 5,
-    },
-    {
-      id: "7",
-      title: "The Hobbit",
-      author: "J.R.R. Tolkien",
-      isbn: "978-0-547-92822-7",
-      dewey: "823.912",
-      category: "Fantasy",
-      location: "Section B-2, Shelf 6",
-      status: "checked-out",
-      copies: 3,
-    },
-    {
-      id: "8",
-      title: "The Selfish Gene",
-      author: "Richard Dawkins",
-      isbn: "978-0-19-929114-4",
-      dewey: "576.8",
-      category: "Science",
-      location: "Section C-2, Shelf 3",
-      status: "available",
-      copies: 2,
-    },
-  ];
+  const fetchBooks = useCallback(async (search?: string, genre?: string) => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      const q = search ?? searchQuery;
+      const g = genre ?? genreFilter;
+      if (q.trim()) {
+        params.set("title", q.trim());
+      }
+      if (g !== "all") {
+        params.set("genre", g);
+      }
+      params.set("page", "1");
+      params.set("limit", "50");
 
-  const filteredBooks = mockBooks.filter((book) => {
-    const matchesSearch =
-      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.isbn.includes(searchQuery) ||
-      book.dewey.includes(searchQuery);
+      const qs = params.toString();
+      const res = await apiFetch<BooksResponse>(`/books${qs ? `?${qs}` : ""}`);
+      setBooks(res.data);
+      setPagination(res.pagination);
+    } catch {
+      toast.error("Failed to load catalog data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, genreFilter]);
 
-    const matchesCategory = categoryFilter === "all" || book.category === categoryFilter;
-    const matchesStatus = statusFilter === "all" || book.status === statusFilter;
+  // Initial load — also fetch all genres
+  useEffect(() => {
+    async function init() {
+      try {
+        const res = await apiFetch<BooksResponse>("/books?limit=200");
+        setBooks(res.data);
+        setPagination(res.pagination);
+        const genres = Array.from(new Set(res.data.map((b) => b.genre).filter(Boolean) as string[]));
+        setAllGenres(genres);
+      } catch {
+        toast.error("Failed to load catalog data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    init();
+  }, []);
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // Debounce search — refetch when search/filter changes
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchBooks();
+    }, 400);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, genreFilter]);
 
-  const getStatusBadge = (status: Book["status"]) => {
-    switch (status) {
-      case "available":
-        return <Badge className="bg-brand-sage/15 text-brand-sage border-0 text-[10px]">Available</Badge>;
-      case "checked-out":
-        return <Badge className="bg-brand-amber/15 text-brand-amber border-0 text-[10px]">Checked Out</Badge>;
-      case "maintenance":
-        return <Badge className="bg-muted text-muted-foreground border-0 text-[10px]">Maintenance</Badge>;
+  const handleAddBook = async () => {
+    const title = addTitleRef.current?.value?.trim();
+    const author = addAuthorRef.current?.value?.trim();
+    const isbn = addIsbnRef.current?.value?.trim();
+    if (!title || !author || !isbn) {
+      toast.error("Title, author, and ISBN are required");
+      return;
+    }
+    try {
+      await apiFetch("/books", {
+        method: "POST",
+        body: {
+          title,
+          author,
+          isbn,
+          genre: addGenreRef.current?.value?.trim() || undefined,
+          deweyDecimal: addDeweyRef.current?.value?.trim() || undefined,
+        },
+      });
+      toast.success("Book added to catalog");
+      setIsAddDialogOpen(false);
+      fetchBooks();
+    } catch {
+      toast.error("Failed to add book");
     }
   };
 
-  const categories = ["all", "Fiction", "Non-Fiction", "Science", "Fantasy"];
-  const statuses = ["all", "available", "checked-out", "maintenance"];
+  const handleEditBook = async () => {
+    if (!editingBook) return;
+    const title = editTitleRef.current?.value?.trim();
+    const author = editAuthorRef.current?.value?.trim();
+    const isbn = editIsbnRef.current?.value?.trim();
+    if (!title || !author || !isbn) {
+      toast.error("Title, author, and ISBN are required");
+      return;
+    }
+    try {
+      await apiFetch(`/books/${editingBook.id}`, {
+        method: "PUT",
+        body: {
+          title,
+          author,
+          isbn,
+          genre: editGenreRef.current?.value?.trim() || null,
+          deweyDecimal: editDeweyRef.current?.value?.trim() || null,
+        },
+      });
+      toast.success("Book updated");
+      setIsEditDialogOpen(false);
+      setEditingBook(null);
+      fetchBooks();
+    } catch {
+      toast.error("Failed to update book");
+    }
+  };
+
+  const openEditDialog = (book: Book) => {
+    setEditingBook(book);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await apiFetch(`/books/${id}`, { method: "DELETE" });
+      toast.success("Book deleted");
+      fetchBooks();
+    } catch {
+      toast.error("Failed to delete book");
+    }
+  };
+
+  const getStatusLabel = (book: Book) => {
+    if (book.totalCopies === 0) {
+      return <Badge className="bg-muted text-muted-foreground border-0 text-[10px]">No Copies</Badge>;
+    }
+    if (book.availableCopies === 0) {
+      return <Badge className="bg-brand-amber/15 text-brand-amber border-0 text-[10px]">All Checked Out</Badge>;
+    }
+    return <Badge className="bg-brand-sage/15 text-brand-sage border-0 text-[10px]">Available</Badge>;
+  };
+
+  const genres = ["all", ...allGenres];
 
   return (
     <div className="p-8 ">
@@ -158,7 +207,7 @@ export default function CatalogPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Books</p>
-                <p className="text-2xl font-display font-semibold tracking-tight mt-1">{mockBooks.length}</p>
+                <p className="text-2xl font-display font-semibold tracking-tight mt-1">{pagination.total}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-brand-navy/8 flex items-center justify-center">
                 <BookOpen className="w-5 h-5 text-brand-navy" />
@@ -172,7 +221,7 @@ export default function CatalogPage() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Available</p>
                 <p className="text-2xl font-display font-semibold tracking-tight mt-1">
-                  {mockBooks.filter((b) => b.status === "available").length}
+                  {books.filter((b) => b.availableCopies > 0).length}
                 </p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-brand-sage/10 flex items-center justify-center">
@@ -187,7 +236,7 @@ export default function CatalogPage() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checked Out</p>
                 <p className="text-2xl font-display font-semibold tracking-tight mt-1">
-                  {mockBooks.filter((b) => b.status === "checked-out").length}
+                  {books.filter((b) => b.availableCopies === 0 && b.totalCopies > 0).length}
                 </p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-brand-amber/10 flex items-center justify-center">
@@ -202,7 +251,7 @@ export default function CatalogPage() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Copies</p>
                 <p className="text-2xl font-display font-semibold tracking-tight mt-1">
-                  {mockBooks.reduce((acc, book) => acc + book.copies, 0)}
+                  {books.reduce((acc, book) => acc + book.totalCopies, 0)}
                 </p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-brand-copper/10 flex items-center justify-center">
@@ -232,30 +281,21 @@ export default function CatalogPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={genreFilter} onValueChange={setGenreFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder="Genre" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat === "all" ? "All Categories" : cat}
+                {genres.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g === "all" ? "All Genres" : g}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status === "all" ? "All Statuses" : status.charAt(0).toUpperCase() + status.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button variant="outline" className="text-xs" onClick={() => { setSearchQuery(""); setGenreFilter("all"); }}>
+              Clear Filters
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -264,72 +304,156 @@ export default function CatalogPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between text-base font-display">
-            <span>Catalog Results ({filteredBooks.length})</span>
-            <Button className="bg-brand-navy hover:bg-brand-navy/90 text-white text-xs">
-              <BookOpen className="w-3.5 h-3.5 mr-2" />
-              Add New Book
-            </Button>
+            <span>Catalog Results ({books.length})</span>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-brand-navy hover:bg-brand-navy/90 text-white text-xs">
+                  <BookOpen className="w-3.5 h-3.5 mr-2" />
+                  Add New Book
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-display">Add New Book</DialogTitle>
+                  <DialogDescription className="text-xs">Add a book to the library catalog</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="add-title" className="text-[11px] text-muted-foreground">Title *</Label>
+                    <Input id="add-title" ref={addTitleRef} placeholder="Book title" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-author" className="text-[11px] text-muted-foreground">Author *</Label>
+                    <Input id="add-author" ref={addAuthorRef} placeholder="Author name" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-isbn" className="text-[11px] text-muted-foreground">ISBN *</Label>
+                    <Input id="add-isbn" ref={addIsbnRef} placeholder="9780743273565" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="add-genre" className="text-[11px] text-muted-foreground">Genre</Label>
+                      <Input id="add-genre" ref={addGenreRef} placeholder="Fiction, Science..." />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="add-dewey" className="text-[11px] text-muted-foreground">Dewey Decimal</Label>
+                      <Input id="add-dewey" ref={addDeweyRef} placeholder="813.52" />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="text-xs">Cancel</Button>
+                  <Button onClick={handleAddBook} className="bg-brand-navy hover:bg-brand-navy/90 text-white text-xs">Add Book</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Title</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Author</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">ISBN</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Dewey</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Category</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Location</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Copies</TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBooks.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-6 h-6 animate-spin text-brand-copper" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading catalog...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-[13px] text-muted-foreground">
-                      No books found matching your search criteria
-                    </TableCell>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Title</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Author</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">ISBN</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Dewey</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Genre</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Copies</TableHead>
+                    <TableHead className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredBooks.map((book) => (
-                    <TableRow key={book.id} className="hover:bg-secondary/40">
-                      <TableCell className="text-[13px] font-medium">{book.title}</TableCell>
-                      <TableCell className="text-[13px]">{book.author}</TableCell>
-                      <TableCell className="text-[12px] text-muted-foreground font-mono">{book.isbn}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px] font-mono">{book.dewey}</Badge>
-                      </TableCell>
-                      <TableCell className="text-[13px]">{book.category}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
-                          <MapPin className="w-3 h-3" />
-                          {book.location}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(book.status)}</TableCell>
-                      <TableCell className="text-center text-[13px]">{book.copies}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {books.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-12 text-[13px] text-muted-foreground">
+                        No books found matching your search criteria
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : (
+                    books.map((book) => (
+                      <TableRow key={book.id} className="hover:bg-secondary/40">
+                        <TableCell className="text-[13px] font-medium">{book.title}</TableCell>
+                        <TableCell className="text-[13px]">{book.author}</TableCell>
+                        <TableCell className="text-[12px] text-muted-foreground font-mono">{book.isbn}</TableCell>
+                        <TableCell>
+                          {book.deweyDecimal ? (
+                            <Badge variant="outline" className="text-[10px] font-mono">{book.deweyDecimal}</Badge>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-[13px]">{book.genre || "—"}</TableCell>
+                        <TableCell>{getStatusLabel(book)}</TableCell>
+                        <TableCell className="text-center text-[13px]">
+                          {book.availableCopies}/{book.totalCopies}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEditDialog(book)}>
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleDelete(book.id)}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Edit Book Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => { setIsEditDialogOpen(open); if (!open) setEditingBook(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">Edit Book</DialogTitle>
+            <DialogDescription className="text-xs">Update book details</DialogDescription>
+          </DialogHeader>
+          {editingBook && (
+            <div className="space-y-3 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-title" className="text-[11px] text-muted-foreground">Title *</Label>
+                <Input id="edit-title" ref={editTitleRef} defaultValue={editingBook.title} key={`t-${editingBook.id}`} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-author" className="text-[11px] text-muted-foreground">Author *</Label>
+                <Input id="edit-author" ref={editAuthorRef} defaultValue={editingBook.author} key={`a-${editingBook.id}`} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-isbn" className="text-[11px] text-muted-foreground">ISBN *</Label>
+                <Input id="edit-isbn" ref={editIsbnRef} defaultValue={editingBook.isbn} key={`i-${editingBook.id}`} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-genre" className="text-[11px] text-muted-foreground">Genre</Label>
+                  <Input id="edit-genre" ref={editGenreRef} defaultValue={editingBook.genre ?? ""} key={`g-${editingBook.id}`} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-dewey" className="text-[11px] text-muted-foreground">Dewey Decimal</Label>
+                  <Input id="edit-dewey" ref={editDeweyRef} defaultValue={editingBook.deweyDecimal ?? ""} key={`d-${editingBook.id}`} />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="text-xs">Cancel</Button>
+            <Button onClick={handleEditBook} className="bg-brand-navy hover:bg-brand-navy/90 text-white text-xs">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

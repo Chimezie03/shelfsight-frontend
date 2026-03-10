@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ShelfSight is an AI-assisted library management system. This is the **frontend** repository. The backend lives in a separate repo ([shelfsight-backend](https://github.com/Chimezie03/shelfsight-backend)).
+ShelfSight is an AI-assisted library management system. This is the **frontend** repository. The backend lives alongside in the `shelfsight-backend/` folder (Express + Prisma + PostgreSQL via Docker).
 
 ## Development Commands
 
@@ -30,7 +30,9 @@ npm run lint      # Run ESLint
 
 ## Architecture
 
-Three-tier system: Next.js frontend (Vercel) → Express REST API (backend repo) → PostgreSQL (AWS RDS or Supabase).
+Three-tier system: Next.js frontend (Vercel) → Express REST API (`shelfsight-backend/`) → PostgreSQL (Docker Compose, port 5432).
+
+All dashboard pages are connected to real backend endpoints — no mock data.
 
 ### App Router Structure
 
@@ -73,11 +75,11 @@ src/app/
 
 ### Key Feature Areas
 
-- **Catalog management** — book CRUD, search/filter by title, author, subject, Dewey category
-- **AI book ingestion** — image upload (cover/spine) → OCR → ISBN detection → metadata enrichment → Dewey Decimal classification suggestions
-- **Circulation** — check-in/check-out, due dates, overdue tracking, fine calculation
-- **2D library map** — SVG-based interactive map with clickable shelf sections, first-person shelf view with framer-motion animations
-- **Member portal** — user profiles, active loans, fines
+- **Catalog management** — book CRUD (add/edit/delete), search/filter by title, author, subject, Dewey category. Connected to `GET/POST/PUT/DELETE /books`
+- **AI book ingestion** — image upload (cover/spine) → `POST /ingest/analyze` → AI-generated metadata for review → accept to add to catalog via `POST /books`
+- **Circulation** — check-in/check-out, due dates, overdue tracking, fine display. Connected to `GET /loans`, `POST /loans/checkout`, `POST /loans/checkin`
+- **2D library map** — React Flow interactive map with drag-and-drop shelf placement, custom shelf nodes, first-person shelf viewer
+- **Members** — user CRUD (add/edit/view/delete), role management (Admin/Staff/Patron). Connected to `GET/POST/PUT/DELETE /users`
 
 ### Backend API Contract
 
@@ -86,13 +88,37 @@ src/app/
 | `POST` | `/auth/login` | Authenticate; sets HttpOnly JWT cookie, returns user |
 | `POST` | `/auth/logout` | Clears JWT cookie |
 | `GET` | `/auth/me` | Current user profile (requires auth cookie) |
-| `GET` | `/books` | Search/filter books |
-| `POST` | `/books` | Create book record (Staff/Admin) |
-| `POST` | `/ingest/analyze` | Image upload → AI-generated metadata for review |
-| `POST` | `/loans/checkout` | Create loan, set CHECKED_OUT |
-| `POST` | `/loans/checkin` | Return book, calculate fines |
+| `GET` | `/books` | Search/filter books (query params: `search`, `genre`, `page`, `limit`) |
+| `POST` | `/books` | Create book record (title, author, isbn required) |
+| `PUT` | `/books/:id` | Update book (title, author, isbn, genre, deweyDecimal, coverImageUrl) |
+| `DELETE` | `/books/:id` | Delete book |
+| `GET` | `/users` | List all users (Admin only) |
+| `POST` | `/users` | Create user (email, password, name, role) |
+| `PUT` | `/users/:id` | Update user (name, email, role, optional password) |
+| `DELETE` | `/users/:id` | Delete user |
+| `GET` | `/loans` | List loans (query params: `status=active\|returned\|overdue`, `userId`, `page`, `limit`) |
+| `POST` | `/loans/checkout` | Create loan (bookCopyId required, optional userId for admin checkout) |
+| `POST` | `/loans/checkin` | Return book, calculate fines (loanId required) |
+| `POST` | `/ingest/analyze` | Image upload (multipart) → AI-generated metadata for review |
 | `GET` | `/map/sections` | 2D map coordinates + labels |
 | `GET` | `/map/shelves/:id` | Shelf contents for first-person view |
+
+### Running the Full Stack
+
+```bash
+# 1. Start PostgreSQL via Docker
+cd shelfsight-backend && docker compose up -d
+
+# 2. Run migrations and seed
+npx prisma migrate dev
+npx prisma db seed
+
+# 3. Start backend (port 3001)
+npm run dev
+
+# 4. Start frontend (port 3000, in another terminal)
+cd shelfsight-frontend && npm run dev
+```
 
 ## Project Links
 
