@@ -59,22 +59,35 @@
 | Name | Details |
 |------|---------|
 | **Kaelen Raible** | **Tasks completed:** |
-| | • TBD |
-| **Time Spent:** TBD | **Planned tasks for next week:** |
-| | • TBD |
+| | • Built out `/loans/checkout` endpoint with validation for book copy availability, duplicate active loan checks, and due date assignment |
+| | • Built out `/loans/checkin` endpoint with loan lookup, return date recording, and automatic fine calculation for overdue returns |
+| | • Implemented loan listing endpoint (`GET /loans`) with query support for filtering by status (active, returned, overdue), userId, and pagination |
+| | • Completed core circulation API skeleton — the next critical API surface for the MVP flow |
+| **Time Spent:** 10 hours | **Planned tasks for next week:** |
+| | • Test all CRUD endpoints (Books, Members, Loans)|
+| | • Add basic circulation logic refinements (due date rules, overdue status checks, fine calculation edge cases) |
+| | • Begin connecting frontend to backend API |
 | | **Any issues or challenges:** |
-| | • TBD |
+| | • Ensuring checkout correctly validates copy availability vs. book-level availability required careful query design |
 
 ---
 
 | Name | Details |
 |------|---------|
 | **Syed Hasan** | **Tasks completed:** |
-| | • TBD |
-| **Time Spent:** TBD | **Planned tasks for next week:** |
-| | • TBD |
+| | • Implemented backend ISBN lookup endpoint `GET /ingest/lookup?isbn=` that retrieves book metadata from the Open Library API |
+| | • Built service logic to fetch and normalize metadata including title, author, publisher, publish date, cover image, and subjects |
+| | • Wired the Ingest page frontend to call the new ISBN lookup endpoint instead of using mocked data |
+| | • Added real ISBN input field and lookup button to the AI Ingest page |
+| | • Implemented metadata review flow allowing users to verify and edit book information before saving |
+| | • Integrated the lookup result with the existing `POST /books` endpoint so books can be added directly to the catalog |
+| | • Verified full end-to-end ingest flow: ISBN lookup → metadata preview → manual edits → save to catalog |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Improve error handling for invalid ISBN lookups |
+| | • Add loading states and UI feedback during metadata fetch |
 | | **Any issues or challenges:** |
-| | • TBD |
+| | • Environment configuration issues with PostgreSQL and Docker during local setup |
+| | • Port conflicts and environment variable expansion issues in `.env` required debugging before the ingest flow could be tested end-to-end |
 
 ---
 
