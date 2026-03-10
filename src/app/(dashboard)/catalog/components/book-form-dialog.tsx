@@ -31,7 +31,7 @@ interface BookFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   book?: Book | null;
-  onSuccess: () => void;
+  onSuccess: (updatedBook?: Book) => void;
 }
 
 interface FormValues {
@@ -151,15 +151,16 @@ export function BookFormDialog({
       };
 
       if (isEdit && book) {
-        await updateBook(book.id, formData);
+        const updated = await updateBook(book.id, formData);
         toast.success("Book updated successfully");
+        onOpenChange(false);
+        onSuccess(updated);
       } else {
-        await createBook(formData);
+        const created = await createBook(formData);
         toast.success("Book added to catalog");
+        onOpenChange(false);
+        onSuccess(created);
       }
-
-      onOpenChange(false);
-      onSuccess();
     } catch {
       toast.error(isEdit ? "Failed to update book" : "Failed to add book");
     }
@@ -227,8 +228,8 @@ export function BookFormDialog({
                     {...register("isbn", {
                       required: "ISBN is required",
                       pattern: {
-                        value: /^978-\d{1,5}-\d{1,7}-\d{1,7}-\d$/,
-                        message: "Format: 978-X-XX-XXXXXX-X",
+                        value: /^(\d{13}|\d{10}|978-\d{1,5}-\d{1,7}-\d{1,7}-\d)$/,
+                        message: "Use 10 or 13 digits, or 978-X-XX-XXXXXX-X",
                       },
                     })}
                     className="mt-1 font-mono"

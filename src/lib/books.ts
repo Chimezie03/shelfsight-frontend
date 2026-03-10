@@ -17,6 +17,7 @@ interface BackendBook {
   genre: string | null;
   deweyDecimal: string | null;
   coverImageUrl: string | null;
+  publishYear?: string | null;
   availableCopies: number;
   totalCopies: number;
   availableCopyIds?: string[];
@@ -45,6 +46,12 @@ function transformBook(b: BackendBook): Book {
       ? "available"
       : "checked-out";
 
+  const yearNum =
+    b.publishYear != null && b.publishYear !== ""
+      ? parseInt(String(b.publishYear), 10)
+      : NaN;
+  const publishYear = !isNaN(yearNum) && yearNum > 0 ? yearNum : new Date(b.createdAt).getFullYear();
+
   return {
     id: b.id,
     title: b.title,
@@ -56,7 +63,7 @@ function transformBook(b: BackendBook): Book {
     status,
     copies: b.totalCopies,
     publisher: "",
-    publishYear: new Date(b.createdAt).getFullYear(),
+    publishYear,
     edition: "",
     language: "English",
     pageCount: 0,
@@ -115,6 +122,7 @@ export async function createBook(data: BookFormData): Promise<Book> {
       genre: data.category || data.subjects?.[0] || undefined,
       deweyDecimal: data.dewey || undefined,
       coverImageUrl: data.coverImageUrl || undefined,
+      publishYear: data.publishYear ? String(data.publishYear) : undefined,
     },
   });
   return transformBook(b);
@@ -133,6 +141,7 @@ export async function updateBook(
       genre: data.category || data.subjects?.[0] || undefined,
       deweyDecimal: data.dewey || undefined,
       coverImageUrl: data.coverImageUrl || undefined,
+      publishYear: data.publishYear != null ? String(data.publishYear) : undefined,
     },
   });
   return transformBook(b);

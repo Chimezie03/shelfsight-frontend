@@ -146,7 +146,7 @@ export function BookDetailSheet({
                 <DetailRow
                   icon={Calendar}
                   label="Year"
-                  value={book.publishYear}
+                  value={book.publishYear && book.publishYear > 0 ? book.publishYear : "—"}
                 />
                 <DetailRow
                   icon={FileText}

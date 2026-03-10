@@ -158,7 +158,12 @@ export default function CatalogPage() {
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         book={editBook}
-        onSuccess={catalog.refreshBooks}
+        onSuccess={(updatedBook) => {
+          catalog.refreshBooks();
+          if (updatedBook && detailBook?.id === updatedBook.id) {
+            setDetailBook(updatedBook);
+          }
+        }}
       />
 
       {/* Delete Confirmation */}
