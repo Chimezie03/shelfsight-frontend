@@ -1,0 +1,1723 @@
+ShelfSight
+AI-Assisted Library Management System
+Technical Specification & Development Report
+Version 1.0
+ Last Updated: March 2026
+Stack: Next.js · Node/Express · PostgreSQL · Prisma · AWS
+Table of Contents
+Product Overview
+Project Scope
+Project Objectives
+Success Metrics
+System Architecture
+Data Model
+API Contract
+AI Ingestion Pipeline
+Technology Stack (Strict Constraints)
+9.5 Project File Structure
+9.6 Current Project Directory Tree (Actual)
+Hardware & Software Requirements
+Project Timeline (Milestones)
+Sprint Planning & Architecture Report
+Agent Guardrails and Instructions
+
+1. Product Overview
+ShelfSight is an AI-assisted library management system designed to streamline the process of cataloging, organizing, and managing physical libraries.
+The system reduces manual cataloging by allowing librarians to upload images of book covers or spines, automatically extracting metadata and suggesting Dewey Decimal classifications.
+In addition to standard library management features such as circulation and catalog management, ShelfSight connects the digital catalog to a visual representation of the physical library.
+A custom 2D library map allows users to:
+Browse shelf sections
+Navigate the library visually
+Locate books quickly through a spatial interface
+The system also provides AI-generated organizational recommendations for shelf organization while ensuring that final decisions remain under librarian control.
+
+2. Project Scope
+2.1 In Scope (MVP)
+Authentication & Roles
+JWT-based authentication (HttpOnly cookies)
+Role-based access: Admin, Staff, Patron
+Catalog Management
+Book metadata storage
+Multiple physical copies per book (BookCopy)
+Search and filtering
+Dewey Decimal categorization
+AI-Assisted Book Ingestion
+Image upload (cover or spine)
+OCR text extraction (AWS Textract)
+ISBN detection
+Metadata enrichment (OpenAI GPT)
+Dewey classification suggestions
+Manual review and override before saving
+Circulation System
+Book check-in / check-out
+Due dates
+Overdue tracking
+Basic fine calculation
+Copy location tracking and shelving
+Library Map System
+Custom 2D map with labeled shelf sections
+Clickable shelf zones
+Zoom-in first-person shelf view
+Zoom-out to full map
+AI Organizational Recommendations
+Generated suggestions based on: Dewey classification, Shelf capacity, Current placement
+Recommendations are advisory only.
+2.2 Out of Scope (MVP)
+The following are stretch features and will not be implemented in the initial release:
+Drag-and-drop shelf reorganization
+Duplicate / missing-volume detection
+Analytics dashboard
+Barcode / QR generation
+Multilingual UI support
+User-defined tags or collections
+Custom map editor
+
+3. Project Objectives
+Primary Objectives
+Build a scalable library management system.
+Reduce manual cataloging through AI-assisted ingestion.
+Connect digital catalog data with physical shelf locations.
+Provide actionable AI recommendations for library organization.
+
+4. Success Metrics
+ShelfSight performance is benchmarked against existing LMS platforms such as Koha, Follett Destiny, and Libib.
+
+4.1 Core System Infrastructure - Phase 1
+F-101 Authentication & Role Based Access
+ID
+Requirement
+Acceptance Criteria
+R-101
+User can log in using email and password
+POST /auth/login accepts email + password. Returns HTTP 200 and sets JWT cookie. Invalid credentials return HTTP 401.
+R-102
+User authentication uses HttpOnly JWT cookie
+JWT stored in HttpOnly cookie; cookie visible in browser dev tools but inaccessible via JS.
+R-103
+Authenticated user profile can be retrieved
+GET /auth/me returns user object with id, email, name, and role. Requires valid JWT.
+R-104
+User can log out
+POST /auth/logout clears JWT cookie and returns {message: "Logged out"}
+R-105
+Protected routes require authentication
+Requests without JWT return HTTP 401 Unauthorized
+R-106
+Role-based access enforced
+Admin routes reject STAFF/PATRON with HTTP 403
+R-107
+Passwords stored securely
+Passwords hashed with bcrypt before database storage
+R-108
+Authentication middleware verifies JWT
+Invalid or expired JWT results in HTTP 401
+
+F-102 User Management
+ID
+Requirement
+Acceptance Criteria
+R-110
+Admin can create new users
+POST /users creates user record with role
+R-111
+Admin can view users
+GET /users returns paginated user list
+R-112
+Admin can update user
+PUT /users/:id updates user fields
+R-113
+Admin can delete user
+DELETE /users/:id removes user
+R-114
+User roles supported
+Role enum only allows ADMIN, STAFF, PATRON
+R-115
+Duplicate emails prevented
+Creating user with existing email returns HTTP 409
+
+F-103 Database Schema Implementation 
+ID
+Requirement
+Acceptance Criteria
+R-120
+Prisma schema matches system data model
+All tables exist: User, Book, BookCopy, Loan, ShelfSection, IngestionJob
+R-121
+Unique constraints enforced
+Duplicate ISBN or barcode returns database error
+R-122
+Foreign key relationships enforced
+BookCopy must reference valid Book ID
+R-123
+Default timestamps populated
+createdAt fields populated automatically
+R-124
+Database migrations run successfully
+prisma migrate dev executes without errors
+
+
+4.2 Catalog Management - Phase 2
+F-201 Book Catalog CRUD
+ID
+Requirement
+Acceptance Criteria
+R-201
+User can create book entry
+POST /books stores book metadata
+R-202
+User can retrieve catalog list
+GET /books returns paginated results
+R-203
+Book metadata editable
+PUT /books/:id updates metadata
+R-204
+Book can be deleted
+DELETE /books/:id removes book and copies
+R-205
+ISBN stored uniquely
+Duplicate ISBN rejected
+R-206
+Search functionality supported
+GET /books?query= returns matching results
+R-207
+Books categorized by Dewey Decimal
+deweyDecimal field stored and searchable
+
+F-202 Book Copy Management
+ID
+Requirement
+Acceptance Criteria
+R-210
+Multiple copies per book supported
+BookCopy table references Book ID
+R-211
+Copy has unique barcode
+Duplicate barcode rejected
+R-212
+Copy status tracked
+Enum values: AVAILABLE, CHECKED_OUT, LOST, PROCESSING
+R-213
+Copy linked to shelf location
+shelfId references ShelfSection
+R-214
+Copy lifecycle events logged
+BookCopyEvent created for status change
+R-215
+Copy history retrievable
+GET /loans/copies/:copyId/history returns events
+
+
+4.3 Circulation System - Phase 3
+F-301 Checkout Process
+ID
+Requirement
+Acceptance Criteria
+R-301
+Staff can check our book copy
+POST /loans/checkout creates Loan record
+R-302
+Copy Status updated on checkout
+status set to CHECKED_OUT
+R-303
+Due date assigned
+dueDate stored in Loan record
+R-304
+Checkout event logged
+BookCopyEvent type CHECKED_OUT created
+R-305
+Cannot checkout unavailable copy
+Request returns HTTP 409
+
+F-302 Check-in Process
+ID
+Requirement
+Acceptance Criteria
+R-310
+Staff can check in book
+POST /loans/checkin updates Loan
+R-311
+Copy status restored
+status set to AVAILABLE
+R-312
+Return timestamp recorded
+returnedAt populated
+R-313
+Check-in event logged
+BookCopyEvent type RETURNED created
+
+F-303 Fine Calculation
+ID
+Requirement
+Acceptance Criteria
+R-320
+System calculates overdue fines
+Fine stored in Loan.fineAmount
+R-321
+Fine calculated automatically
+fineAmount updated when book returned late
+R-322
+Overdue loans identifiable
+Loan returnedAt > dueDate flagged
+
+
+4.4 AI Book Ingestion - Phase 4
+F-402 Image Upload
+ID
+Requirement
+Acceptance Criteria
+R-401
+User can upload book image
+POST /ingest/analyze accepts multipart image
+R-402
+Image size limited
+Files larger than 10MB rejected
+R-403
+Image stored temporarily
+Multer stores image in memory
+R-404
+Image processed for OCR
+AWS Textract returns text
+
+F-402 Metadata Extraction
+ID
+Requirement
+Acceptance Criteria
+R-410
+System detects ISBN from OCR
+ISBN parsed from OCR text
+R-411
+Metadata enrichment performed
+Title, author retrieved via API
+R-412
+Dewey suggestion generated
+GPT returns classification
+R-413
+AI results returned to frontend
+OCR text + metadata JSON returned
+R-414
+Confidence score included
+Value between 0.0–1.0
+
+F-403 Manual Review
+ID
+Requirement
+Acceptance Criteria
+R-420
+Staff reviews ingestion results
+IngestionJob created with status PENDING
+R-420
+Staff can approve ingestion
+Book created in catalog
+R-420
+Staff can reject ingestion
+Job status marked FAILED
+R-420
+AI suggestions editable
+Staff may modify fields before saving
+
+
+4.5 Library Map System - Phase 5
+F-501 Map Rendering
+ID
+Requirement
+Acceptance Criteria
+R-501
+Library map renders in UI
+/map page loads React Flow canvas
+R-501
+Shelf sections visible
+Shelf nodes display label
+R-501
+Map supports zoom and pan
+Mouse or trackpad zoom works
+R-501
+Shelf nodes clickable
+Clicking shelf opens detail panel
+
+F-502 Shelf Navigation
+ID
+Requirement
+Acceptance Criteria
+R-510
+Users can view shelf contents
+Clicking shelf shows books located there
+R-511
+First-person shelf view available
+Zoomed shelf viewer loads
+R-512
+Shelf capacity displayed
+Number of books per shelf visible
+R-513
+Map state persists
+Reloading page restores map layout
+
+
+4.6 AI Organizational Recommendations - Phase 6
+F-601 Organizational Suggestions 
+ID
+Requirement
+Acceptance Criteria
+R-601
+System analyzes shelf placement
+AI reads Dewey codes and shelf capacity
+R-602
+Suggests improved organization
+Recommendations returned as JSON
+R-603
+Suggestions visible in UI
+Displayed in recommendation panel
+R-604
+Suggestions advisory only
+No automatic changes applied
+R-605
+Staff confirms reorganization
+Staff must manually move books
+
+
+Global Non-Functional ACceptance Criteria
+ID
+Requirement
+Acceptance Criteria
+R-900
+Page load performance
+Core pages load under 3 seconds
+R-900
+System capacity
+Supports 500 books and 100 users
+R-900
+ISBN detection accuracy
+≥ 90% correct detection rate
+R-900
+Dewey suggestion accuracy
+≥ 80% accepted by librarians
+R-900
+Book location via map
+Book found within 10 seconds
+
+
+5. System Architecture
+ShelfSight follows a three-layer architecture:
+Frontend Layer
+Next.js 16 web interface (App Router)
+Catalog UI
+Circulation interface
+Interactive 2D library map (React Flow)
+Ingestion review interface
+Reports dashboard
+Backend Layer
+Node.js + Express REST API
+Prisma ORM
+PostgreSQL 16 database
+JWT authentication (HttpOnly cookies) and RBAC
+AI / Data Processing Layer
+OCR extraction (AWS Textract)
+ISBN detection
+Metadata enrichment (OpenAI GPT)
+Dewey classification suggestions
+AI outputs are reviewed by librarians before being committed to the catalog.
+
+6. Data Model
+Source of truth: schema.prisma
+The entities below reflect the exact schema as implemented. Field names, types, and enums match the Prisma schema verbatim.
+Core Entities
+User
+Field
+Type
+Notes
+id
+String
+UUID, primary key
+email
+String
+Unique
+passwordHash
+String
+
+
+name
+String
+
+
+role
+Role
+Enum: ADMIN | STAFF | PATRON
+createdAt
+DateTime
+Default: now()
+
+Book
+Field
+Type
+Notes
+id
+String
+UUID, primary key
+title
+String
+
+
+author
+String
+Singular (single author string)
+isbn
+String
+Unique, combined ISBN field
+genre
+String?
+Optional
+deweyDecimal
+String?
+Optional, Dewey classification code
+coverImageUrl
+String?
+Optional, S3 URL
+createdAt
+DateTime
+Default: now()
+
+BookCopy — Represents a physical book item.
+Field
+Type
+Notes
+id
+String
+UUID, primary key
+bookId
+String
+FK → Book
+barcode
+String
+Unique, physical barcode identifier
+status
+CopyStatus
+Enum: AVAILABLE | CHECKED_OUT | LOST | PROCESSING
+shelfId
+String?
+Optional FK → ShelfSection
+
+BookCopyEvent — Audit trail for physical copy lifecycle events.
+Field
+Type
+Notes
+id
+String
+UUID, primary key
+bookCopyId
+String
+FK → BookCopy, indexed with createdAt
+type
+CopyEventType
+Enum: CHECKED_OUT | RETURNED | SHELVED | MOVED | MARKED_LOST | MARKED_PROCESSING
+userId
+String?
+Optional, who performed the action
+shelfId
+String?
+Optional, target shelf
+loanId
+String?
+Optional, associated loan
+note
+String?
+Optional, freeform note
+createdAt
+DateTime
+Default: now()
+
+Loan
+Field
+Type
+Notes
+id
+String
+UUID, primary key
+userId
+String
+FK → User
+bookCopyId
+String
+FK → BookCopy
+checkedOutAt
+DateTime
+Default: now()
+dueDate
+DateTime
+Due date for return
+returnedAt
+DateTime?
+Null until returned
+fineAmount
+Float
+Default: 0, dollar amount
+
+ShelfSection — Represents a zone on the 2D library map.
+Field
+Type
+Notes
+id
+String
+UUID, primary key
+label
+String
+Display name
+mapX
+Int
+X position on 2D map
+mapY
+Int
+Y position on 2D map
+width
+Int
+Pixel width on map
+height
+Int
+Pixel height on map
+floor
+Int
+Floor number
+
+IngestionJob — Tracks AI ingestion lifecycle.
+Field
+Type
+Notes
+id
+String
+UUID, primary key
+imageUrl
+String
+S3 URL of uploaded image
+status
+IngestionStatus
+Enum: PENDING | PROCESSING | COMPLETED | FAILED
+ocrText
+String?
+Extracted text from OCR
+detectedIsbn
+String?
+ISBN found in image
+suggestedDewey
+String?
+AI-suggested Dewey code
+confidenceScore
+Float?
+AI confidence score (0.0–1.0)
+reviewedBy
+String?
+Staff member who reviewed
+createdAt
+DateTime
+Default: now()
+
+
+7. API Contract
+Source of truth: shelfsight-backend/src/routes/*.ts
+The endpoints below reflect the exact routes as implemented. Auth requirements are noted.
+7.1 Universal API Error Format
+Field
+Type/Example
+Required
+Rule
+success
+boolean (false)
+Yes
+Always false for non-2xx responses
+error.code
+"STRING_CODE"
+Yes
+Stable machine-readable code
+error.message
+"Human readable"
+Yes
+Safe for UI display
+error.details
+{}
+Yes
+Object; may be empty
+meta.statusCode
+400
+Yes
+Must equal HTTP status code
+meta.timestamp
+ISO-8601 UTC
+Yes
+Server-generated timestamp
+meta.path
+"/route"
+Yes
+Requested route path
+
+Health
+Method
+Endpoint
+Auth Required
+Exact Contract (Request / Success / Status Codes)
+GET
+/health
+No
+Success 200: { "status": "ok", "timestamp": "ISO-8601" }
+Status: 200
+
+Authentication (/auth)
+Method
+Endpoint
+Auth Required
+Exact Contract (Request / Success / Status Codes)
+POST
+/auth/login
+No
+Request: { "email": "string", "password": "string" }
+Success 200: { "user": { "userId", "email", "role", "name" } }
+Status: 200, 400, 401, 500
+POST
+/auth/logout
+No
+Success 200: { "message": "Logged out successfully" }
+Status: 200
+GET
+/auth/me
+Yes
+Success 200: { "user": { "id", "email", "name", "role", "createdAt", "loans": [...] } }
+Status: 200, 401, 404, 500
+
+Catalog (/books)
+Method
+Endpoint
+Auth Required
+Exact Contract (Request / Success / Status Codes)
+GET
+/books
+No
+Query: title?, author?, isbn?, genre?, page?=1, limit?=20
+Success 200: { "data": [...], "pagination": { "page", "limit", "total", "totalPages" } }
+Status: 200, 500
+POST
+/books
+No
+Request: { "title", "author", "isbn", "genre?", "deweyDecimal?", "coverImageUrl?", "publishYear?" }
+Success 201: Book object
+Status: 201, 400
+PUT
+/books/:id
+No
+Request: partial/full same fields as POST /books
+Success 200: Book object
+Status: 200, 400, 404
+DELETE
+/books/:id
+No
+Success 204: no response body
+Status: 204, 400, 404
+
+AI Ingestion (/ingest)
+Method
+Endpoint
+Auth Required
+Exact Contract (Request / Success / Status Codes)
+GET
+/ingest/lookup?isbn=<value>
+No
+Success 200: { "success": true, "data": { "isbn", "found", "metadata": { "isbn", "title", "author", "publisher", "publishDate", "coverImageUrl", "subjects", "source" } } }
+Status: 200, 400, 500
+POST
+/ingest/analyze
+No
+Content-Type: multipart/form-data (field=image)
+Success 200: { "success": true, "data": { "image": {...}, "ocr": {...}, "isbn": {...}, "classification": {...} } }
+Status: 200, 400, 415, 500
+
+Circulation (/loans)
+Method
+Endpoint
+Auth Required
+Exact Contract (Request / Success / Status Codes)
+GET
+/loans
+Yes
+Query: userId?, status?=active|returned|overdue, page?=1, limit?=20
+Success 200: { "data": [...], "pagination": {...} }
+Status: 200, 401, 500
+POST
+/loans/checkout
+Yes
+Request: { "bookCopyId", "dueDays?", "userId?" }
+Success 201: loan object with user and bookCopy.book
+Status: 201, 400, 401, 404, 409, 500
+POST
+/loans/checkin
+Yes
+Request: { "loanId" }
+Success 200: updated loan object (returnedAt, fineAmount)
+Status: 200, 400, 401, 404, 409, 500
+GET
+/loans/copies/:copyId/location
+Yes
+Success 200: { "id", "barcode", "status", "book", "shelf", "activeLoan" }
+Status: 200, 401, 404, 500
+GET
+/loans/copies/:copyId/history
+Yes
+Query: page?=1, limit?=20
+Success 200: { "data": [...], "pagination": {...} }
+Status: 200, 401, 404, 500
+POST
+/loans/copies/:copyId/shelve
+Yes
+Request: { "shelfId" }
+Success 200: updated BookCopy with included book and shelf
+Status: 200, 400, 401, 404, 409, 500
+
+Users (/users)
+Method
+Endpoint
+Auth Required
+Exact Contract (Request / Success / Status Codes)
+GET
+/users
+Yes (ADMIN)
+Success 200: [ { "id", "email", "name", "role", "createdAt" } ]
+Status: 200, 401, 403, 500
+POST
+/users
+Yes (ADMIN)
+Request: { "email", "password", "name", "role" }
+Success 201: user object (current API includes passwordHash)
+Status: 201, 400, 401, 403
+PUT
+/users/:id
+Yes (ADMIN)
+Request: { "email?", "password?", "name?", "role?" }
+Success 200: updated user object
+Status: 200, 400, 401, 403, 404
+DELETE
+/users/:id
+Yes (ADMIN)
+Success 204: no response body
+Status: 204, 400, 401, 403, 404
+
+Library Map (/map)
+Method
+Endpoint
+Auth Required
+Exact Contract (Request / Success / Status Codes)
+ANY
+/map/*
+N/A
+Current behavior: 501 Not Implemented
+Body: { "error": "Not Implemented" }
+Status: 501
+
+Implementation Notes
+ID
+Requirement
+Current State
+Action Required
+API-7.4-01
+Universal error envelope
+Backend currently returns inconsistent error shapes
+Normalize all endpoint errors to the universal JSON format above
+API-7.4-02
+Frontend/backend parity
+Frontend calls GET /books/:id; backend route not implemented
+Add GET /books/:id or remove frontend call
+
+8. AI Ingestion Pipeline
+Current implementation:
+Step 1 — Upload: User uploads book image via POST /ingest/analyze (multipart form, field: image, max 10 MB).
+Step 2 — Processing (Synchronous): Backend receives image in memory (Multer), sends to AWS Textract for OCR, detects ISBN from extracted text, enriches metadata via OpenAI, suggests Dewey Decimal classification.
+Step 3 — Response: Returns OCR text, detected ISBN, suggested metadata, and Dewey classification to the frontend in a single response.
+Planned architecture (async):
+Step 2 — Job Creation: Backend stores image in AWS S3, creates IngestionJob record, sends job ID to SQS queue.
+Step 3 — Async Processing: Worker (AWS Lambda, src/lambdas/ingest.handler.ts) consumes SQS event, retrieves image from S3, runs Textract OCR, detects ISBN, fetches metadata, suggests Dewey classification, updates IngestionJob record.
+Step 4 — Review: Frontend polls job status. Staff reviews suggested data, edits fields if necessary, and approves or rejects. No catalog data is saved automatically.
+Current status: The Lambda handler (ingest.handler.ts) is implemented but the SQS queue integration and job status polling endpoints (GET /ingest/jobs/:id, POST /ingest/jobs/:id/approve, POST /ingest/jobs/:id/reject) are not yet implemented in the Express routes. The current flow is synchronous via POST /ingest/analyze.
+
+9. Technology Stack (Strict Constraints)
+Directive for all agents & contributors: Only the technologies, versions, and libraries listed below are permitted. Do not introduce additional frameworks, CSS methodologies, ORMs, or runtime alternatives. Any deviation requires an explicit amendment to this section.
+9.1 Frontend — Exact Technology Table
+Category
+Technology
+Version Constraint
+Notes / Constraints
+Framework
+Next.js (App Router)
+16.x (currently 16.1.6)
+App Router only. Pages Router is banned. All routes live under src/app/.
+Language
+TypeScript
+^5.x
+Strict mode enabled. No any unless explicitly unavoidable.
+React
+React
+19.x (currently 19.2.3)
+Use React Server Components where possible.
+Styling
+Tailwind CSS
+^4.x
+Utility-first only. Custom .css files are banned except for globals.css. All component styling via Tailwind utility classes.
+PostCSS
+@tailwindcss/postcss
+^4.x
+Required PostCSS plugin. No additional PostCSS plugins permitted.
+Animation
+tw-animate-css
+^1.4.x
+Tailwind animation utilities.
+Motion
+Motion (Framer Motion)
+^12.x
+For complex component animations only. Prefer Tailwind transitions for simple cases.
+UI Components
+shadcn/ui (Radix primitives)
+Latest CLI-installed
+All base UI components live in src/components/ui/. Generated via npx shadcn@latest add. Do not hand-write primitives that shadcn provides.
+Icons
+Lucide React
+^0.575.x
+Only icon library permitted. No FontAwesome, Heroicons, or inline SVGs.
+Forms
+React Hook Form
+^7.x
+Controlled components only.
+Theming
+next-themes
+^0.4.x
+Dark/light mode support.
+Charts
+Recharts
+^3.x
+Only charting library permitted.
+Toast / Notifications
+Sonner
+^2.x
+Only toast library. Wrapper in src/components/ui/sonner.tsx.
+Date Utilities
+date-fns
+^4.x
+No Moment.js or Day.js.
+Map / Canvas
+@xyflow/react (React Flow)
+^12.x
+For 2D library map.
+Drag & Drop
+@dnd-kit/core + @dnd-kit/sortable
+^6.x / ^10.x
+For drag-and-drop interactions. No react-beautiful-dnd.
+Image Export
+html-to-image
+^1.x
+Map screenshot export.
+Masonry Layout
+react-responsive-masonry
+^2.x
+Grid layout for catalog grid view.
+Linting
+ESLint 9 + eslint-config-next
+^9.x / 16.x
+Flat config format (eslint.config.mjs).
+Bundler
+Next.js built-in (Turbopack/Webpack)
+—
+No Vite, Parcel, or esbuild overrides.
+Package Manager
+npm
+—
+Lockfile is package-lock.json. No Yarn, pnpm, or Bun.
+
+9.2 Backend — Exact Technology Table
+Category
+Technology
+Version Constraint
+Notes / Constraints
+Runtime
+Node.js
+≥ 20.x LTS
+No Deno, Bun, or alternative runtimes.
+Language
+TypeScript
+^5.3.x
+Strict mode. Compiled via tsc to dist/. Module: NodeNext.
+Framework
+Express
+^4.18.x
+Minimal middleware. No Fastify, Hapi, Koa, or NestJS.
+ORM
+Prisma
+^5.7.x
+Only database access layer. No raw SQL queries outside migrations.
+Database
+PostgreSQL
+16.x
+Containerized via Docker Compose for local dev. AWS RDS or Supabase for production.
+Auth
+jsonwebtoken + bcryptjs
+^9.x / ^3.x
+JWT-based stateless auth via HttpOnly cookies. No Passport.js, no session-based auth.
+Security
+Helmet
+^7.x
+Mandatory on all responses.
+CORS
+cors
+^2.8.x
+Explicitly configured origin (http://localhost:3000). No wildcard * in production.
+Logging
+Morgan
+^1.10.x
+HTTP request logging. No Winston, Pino, or Bunyan.
+File Upload
+Multer
+^2.x
+Multipart form handling. In-memory storage; files go to S3 immediately. 10 MB limit.
+HTTP Client
+node-fetch
+^2.x (CommonJS)
+For ISBN/metadata API calls. No Axios.
+AI / LLM
+OpenAI SDK
+^6.x
+For Dewey classification suggestions and metadata enrichment.
+Dev Runner
+tsx
+^3.x
+tsx watch for development. No ts-node at runtime.
+Env Config
+dotenv
+^16.x
+.env file at project root. No config libraries.
+Cookie Parsing
+cookie-parser
+^1.4.x
+For HTTP-only refresh token cookies.
+Containerization
+Docker Compose
+3.8
+Local PostgreSQL only. Single docker-compose.yml at backend root.
+
+9.3 Cloud Infrastructure — Exact Service Table
+Service
+Purpose
+Constraints
+AWS S3
+Book cover/spine image storage
+Private bucket. Pre-signed URLs for upload. SDK: @aws-sdk/client-s3 ^3.x.
+AWS SQS
+Async ingestion job queue (planned)
+Standard queue (not FIFO). SDK: @aws-sdk/client-sqs ^3.x.
+AWS Lambda
+Ingestion worker (OCR + metadata)
+Node.js 20 runtime. Handler in src/lambdas/ingest.handler.ts.
+AWS Textract
+OCR text extraction from images
+SDK: @aws-sdk/client-textract ^3.x.
+AWS CloudWatch
+Logging & monitoring
+Default Lambda integration.
+Vercel
+Frontend hosting
+Next.js automatic deployment.
+
+9.4 Banned Technologies & Practices
+The following are explicitly prohibited across the entire codebase:
+Banned Item
+Reason
+CSS Modules (*.module.css)
+All styling via Tailwind utilities only.
+Styled Components / Emotion
+No CSS-in-JS libraries.
+Custom .css files (beyond globals.css)
+Violates single-source styling principle.
+Pages Router (pages/ directory)
+App Router (app/) is mandatory.
+Yarn / pnpm / Bun
+npm is the only permitted package manager.
+Axios
+Use node-fetch on backend; native fetch on frontend.
+Moment.js / Day.js
+Use date-fns exclusively.
+Passport.js
+Custom JWT middleware only.
+Raw SQL in application code
+All queries through Prisma Client. Migrations may use raw SQL.
+console.log in production code
+Use Morgan (backend) or structured logging.
+Default exports (components)
+Named exports only, except for Next.js page/layout conventions and Express route modules.
+any type
+Use unknown with type guards, or define proper interfaces.
+
+
+9.5 Project File Structure
+Directive: All source files must reside in the locations defined below. Agents and contributors must not create files outside this structure without amending this section. New feature modules follow the same co-located pattern (page + components/ + hooks/ + constants.ts).
+9.5.1 Frontend (shelfsight-frontend)
+shelfsight-frontend/
+├── .env.example                      # Environment variable template
+├── eslint.config.mjs                 # ESLint flat config — do not convert to .eslintrc
+├── next-env.d.ts                     # Auto-generated Next.js types — do not edit
+├── next.config.ts                    # Next.js configuration
+├── package.json                      # Dependencies & scripts
+├── package-lock.json                 # Lockfile — npm only
+├── postcss.config.mjs                # PostCSS config — @tailwindcss/postcss only
+├── tsconfig.json                     # TypeScript config — strict mode, path alias @/*
+├── public/                           # Static assets (favicon, images, fonts)
+│   └── ShelfSight Logo.png
+│
+└── src/
+    ├── app/                          # ═══ NEXT.JS APP ROUTER — all routes here ═══
+    │   ├── globals.css               # Global styles — ONLY permitted CSS file
+    │   ├── layout.tsx                # Root layout (html, body, providers, toaster)
+    │   ├── page.tsx                  # Landing / login page ( "/" )
+    │   ├── favicon.ico
+    │   │
+    │   └── (dashboard)/              # Route group — no URL segment generated
+    │       ├── layout.tsx            # Dashboard shell (sidebar, topbar, auth guard)
+    │       │
+    │       ├── dashboard/
+    │       │   └── page.tsx          # /dashboard — overview stats
+    │       │
+    │       ├── catalog/
+    │       │   ├── page.tsx          # /catalog — book catalog list/grid
+    │       │   ├── constants.ts      # Column defs, filter options, sort keys
+    │       │   ├── mock-data.ts      # Dev-only seed data
+    │       │   ├── components/
+    │       │   │   ├── book-detail-sheet.tsx
+    │       │   │   ├── book-form-dialog.tsx
+    │       │   │   ├── catalog-grid.tsx
+    │       │   │   ├── catalog-pagination.tsx
+    │       │   │   ├── catalog-stats.tsx
+    │       │   │   ├── catalog-table.tsx
+    │       │   │   ├── catalog-toolbar.tsx
+    │       │   │   └── delete-confirm-dialog.tsx
+    │       │   └── hooks/
+    │       │       └── use-catalog-state.ts
+    │       │
+    │       ├── circulation/
+    │       │   ├── page.tsx          # /circulation — loan management
+    │       │   ├── constants.ts      # Status labels, fine rates, period options
+    │       │   ├── mock-data.ts      # Dev-only seed data
+    │       │   ├── components/
+    │       │   │   ├── active-loans-table.tsx
+    │       │   │   ├── checkin-confirm-dialog.tsx
+    │       │   │   ├── checkin-tab.tsx
+    │       │   │   ├── checkout-tab.tsx
+    │       │   │   ├── circulation-pagination.tsx
+    │       │   │   ├── circulation-stats.tsx
+    │       │   │   ├── fines-tab.tsx
+    │       │   │   ├── loan-detail-sheet.tsx
+    │       │   │   ├── overdue-alert-banner.tsx
+    │       │   │   ├── renew-dialog.tsx
+    │       │   │   └── transaction-history-table.tsx
+    │       │   └── hooks/
+    │       │       └── use-circulation-state.ts
+    │       │
+    │       ├── ingest/
+    │       │   └── page.tsx          # /ingest — AI ingestion review UI
+    │       │
+    │       ├── map/
+    │       │   └── page.tsx          # /map — 2D library map
+    │       │
+    │       ├── members/
+    │       │   └── page.tsx          # /members — user/patron management
+    │       │
+    │       └── reports/
+    │           ├── page.tsx          # /reports — reporting dashboard
+    │           ├── constants.ts      # Report type config, metric keys
+    │           ├── mock-data.ts      # Dev-only report data
+    │           ├── types.ts          # Report-specific type definitions
+    │           ├── components/
+    │           │   ├── chart-card.tsx
+    │           │   ├── circulation-tab.tsx
+    │           │   ├── collection-tab.tsx
+    │           │   ├── custom-tooltip.tsx
+    │           │   ├── financial-tab.tsx
+    │           │   ├── kpi-card.tsx
+    │           │   ├── members-tab.tsx
+    │           │   ├── overview-tab.tsx
+    │           │   ├── peak-hours-heatmap.tsx
+    │           │   └── report-header.tsx
+    │           └── hooks/
+    │               └── use-reports-state.ts
+    │
+    ├── components/                   # ═══ SHARED COMPONENTS ═══
+    │   ├── auth-provider.tsx         # Auth context provider (JWT, user state)
+    │   ├── providers.tsx             # Composed providers (theme + auth)
+    │   │
+    │   ├── map/                      # Library map components (used by /map page)
+    │   │   ├── CanvasToolbar.tsx
+    │   │   ├── data.ts               # Map seed/default data
+    │   │   ├── LibraryMapCanvas.tsx   # Main canvas wrapper
+    │   │   ├── MapCallbacksContext.tsx
+    │   │   ├── MapCanvas.tsx          # React Flow canvas instance
+    │   │   ├── MapControls.tsx        # Zoom / pan controls
+    │   │   ├── MapLegend.tsx          # Color legend for shelf sections
+    │   │   ├── ShelfFirstPersonView.tsx # Zoomed-in shelf view
+    │   │   ├── ShelfNode.tsx          # Individual shelf node on map
+    │   │   ├── ShelfPalette.tsx       # Shelf type selector
+    │   │   ├── ShelfSectionCard.tsx   # Shelf info card
+    │   │   ├── ShelfSettingsPanel.tsx # Shelf config panel
+    │   │   ├── ShelfViewer.tsx        # Shelf detail viewer
+    │   │   ├── shelfViewerData.ts     # Viewer mock/seed data
+    │   │   ├── types.ts              # Map-specific TypeScript interfaces
+    │   │   ├── useMapHistory.ts      # Undo/redo hook for map edits
+    │   │   └── utils.ts             # Map geometry & layout helpers
+    │   │
+    │   └── ui/                       # shadcn/ui primitives — generated, do not hand-write
+    │       ├── accordion.tsx
+    │       ├── alert.tsx
+    │       ├── alert-dialog.tsx
+    │       ├── aspect-ratio.tsx
+    │       ├── avatar.tsx
+    │       ├── badge.tsx
+    │       ├── breadcrumb.tsx
+    │       ├── button.tsx
+    │       ├── calendar.tsx
+    │       ├── card.tsx
+    │       ├── carousel.tsx
+    │       ├── chart.tsx
+    │       ├── checkbox.tsx
+    │       ├── collapsible.tsx
+    │       ├── command.tsx
+    │       ├── context-menu.tsx
+    │       ├── dialog.tsx
+    │       ├── drawer.tsx
+    │       ├── dropdown-menu.tsx
+    │       ├── form.tsx
+    │       ├── hover-card.tsx
+    │       ├── input.tsx
+    │       ├── input-otp.tsx
+    │       ├── label.tsx
+    │       ├── menubar.tsx
+    │       ├── navigation-menu.tsx
+    │       ├── pagination.tsx
+    │       ├── popover.tsx
+    │       ├── progress.tsx
+    │       ├── radio-group.tsx
+    │       ├── resizable.tsx
+    │       ├── scroll-area.tsx
+    │       ├── select.tsx
+    │       ├── separator.tsx
+    │       ├── sheet.tsx
+    │       ├── sidebar.tsx
+    │       ├── skeleton.tsx
+    │       ├── slider.tsx
+    │       ├── sonner.tsx
+    │       ├── switch.tsx
+    │       ├── table.tsx
+    │       ├── tabs.tsx
+    │       ├── textarea.tsx
+    │       ├── toggle.tsx
+    │       ├── toggle-group.tsx
+    │       ├── tooltip.tsx
+    │       └── use-mobile.ts         # Mobile breakpoint detection hook
+    │
+    ├── lib/                          # ═══ UTILITIES & API CLIENT ═══
+    │   ├── api.ts                    # Centralized fetch wrapper (base URL, auth headers)
+    │   ├── auth.ts                   # Auth helper functions (token storage, decode)
+    │   ├── books.ts                  # Book-specific API call functions
+    │   └── utils.ts                  # General utilities (cn(), formatters)
+    │
+    └── types/                        # ═══ SHARED TYPESCRIPT INTERFACES ═══
+        ├── book.ts                   # Book, BookCopy, BookFormData, BookQueryParams
+        └── circulation.ts            # Loan, Fine, CirculationMember, LoanStatus
+
+Frontend File Placement Rules
+File Type
+Location
+Convention
+Page route
+src/app/(dashboard)/<feature>/page.tsx
+One page.tsx per route segment. Default export required (Next.js convention).
+Route-specific component
+src/app/(dashboard)/<feature>/components/*.tsx
+Co-located. Named exports. Kebab-case filenames.
+Route-specific hook
+src/app/(dashboard)/<feature>/hooks/use-*.ts
+Co-located. use- prefix mandatory.
+Route-specific types
+src/app/(dashboard)/<feature>/types.ts
+When types are only used within one route module.
+Route constants
+src/app/(dashboard)/<feature>/constants.ts
+Column defs, enums, config objects.
+Route mock data
+src/app/(dashboard)/<feature>/mock-data.ts
+Dev-only seed data. Remove before production.
+Shared UI primitive
+src/components/ui/*.tsx
+shadcn/ui generated only. npx shadcn@latest add.
+Shared feature component
+src/components/<domain>/*.tsx
+Cross-route components (e.g., map). PascalCase filenames.
+API client functions
+src/lib/*.ts
+All backend calls route through api.ts base wrapper.
+TypeScript interfaces
+src/types/*.ts
+Shared across multiple routes. One file per domain entity.
+
+
+9.5.2 Backend (shelfsight-backend)
+shelfsight-backend/
+├── .env                              # Environment variables (git-ignored)
+├── .env.example                      # Environment variable template
+├── docker-compose.yml                # Local PostgreSQL 16 container
+├── package.json                      # Dependencies & scripts
+├── package-lock.json                 # Lockfile — npm only
+├── tsconfig.json                     # TypeScript config — strict, NodeNext modules
+│
+├── prisma/
+│   ├── schema.prisma                 # Prisma schema — single source of truth for DB
+│   ├── seed.ts                       # Database seed script (tsx prisma/seed.ts)
+│   └── migrations/
+│       ├── migration_lock.toml       # Migration provider lock (postgresql)
+│       ├── 20260223230904_init/
+│       │   └── migration.sql         # Initial schema migration
+│       └── 20260309151459_add_book_copy_events/
+│           └── migration.sql         # BookCopyEvent model migration
+│
+├── dist/                             # Compiled JS output (git-ignored, generated by tsc)
+│
+└── src/
+    ├── index.ts                      # Entry point — starts Express server
+    ├── app.ts                        # Express app config (helmet, cors, morgan,
+    │                                 #   cookie-parser, JSON parsing, route mounting,
+    │                                 #   health endpoint, global error handler)
+    │
+    ├── routes/                       # ═══ ROUTE DEFINITIONS ═══
+    │   ├── index.ts                  # Master router — mounts all sub-routers
+    │   ├── auth.ts                   # /auth/* — login, logout, me
+    │   ├── books.ts                  # /books/* — CRUD
+    │   ├── ingest.ts                 # /ingest/* — image analyze
+    │   ├── loans.ts                  # /loans/* — checkout, checkin, copy tracking
+    │   └── users.ts                  # /users/* — CRUD (auth required)
+    │
+    ├── controllers/                  # ═══ REQUEST HANDLERS ═══
+    │   ├── auth.controller.ts        # login, logout, me handlers
+    │   ├── books.controller.ts       # getBooks, createBook, updateBook, deleteBook
+    │   ├── ingest.controller.ts      # analyzeBookImage handler
+    │   ├── loans.controller.ts       # checkout, checkin, getLoans, copy location/history/shelve
+    │   └── users.controller.ts       # getUsers, createUser, updateUser, deleteUser
+    │
+    ├── services/                     # ═══ BUSINESS LOGIC ═══
+    │   ├── auth.service.ts           # JWT signing, password hashing, RBAC
+    │   ├── books.service.ts          # Book queries, search, Dewey lookups
+    │   ├── ingest.service.ts         # S3 upload, Textract OCR, OpenAI enrichment
+    │   ├── loans.service.ts          # Loan creation, returns, fine calculation
+    │   └── users.service.ts          # User CRUD, role management
+    │
+    ├── middleware/                    # ═══ EXPRESS MIDDLEWARE ═══
+    │   └── auth.middleware.ts        # requireAuth (JWT verification),
+    │                                 # requireRole (RBAC gate),
+    │                                 # authenticateJWT (alias)
+    │
+    ├── lambdas/                      # ═══ AWS LAMBDA HANDLERS ═══
+    │   └── ingest.handler.ts         # SQS consumer — Textract OCR, ISBN detection,
+    │                                 #   metadata enrichment, Dewey classification
+    │
+    └── lib/                          # ═══ SHARED UTILITIES ═══
+        └── prisma.ts                 # Singleton Prisma Client instance
+
+Backend File Placement Rules
+File Type
+Location
+Convention
+Route definition
+src/routes/<domain>.ts
+Express Router. Maps HTTP verbs to controller methods. Default export.
+Controller
+src/controllers/<domain>.controller.ts
+Handles req/res. Delegates to service. No business logic here.
+Service
+src/services/<domain>.service.ts
+Pure business logic. Calls Prisma. No req/res objects.
+Middleware
+src/middleware/<name>.middleware.ts
+Express middleware functions.
+Lambda handler
+src/lambdas/<name>.handler.ts
+AWS Lambda entry points. Separate from Express.
+Database client
+src/lib/prisma.ts
+Singleton instance. Imported by services only.
+Prisma schema
+prisma/schema.prisma
+Single schema file. Run prisma migrate dev for changes.
+Seed data
+prisma/seed.ts
+Executed via npm run db:seed.
+
+Backend Script Reference
+Command
+Purpose
+npm run dev
+Start dev server with hot reload (tsx watch src/index.ts)
+npm run build
+Compile TypeScript to dist/
+npm start
+Run compiled production server (node dist/index.js)
+npm run db:migrate
+Run Prisma migrations (prisma migrate dev)
+npm run db:generate
+Regenerate Prisma Client (prisma generate)
+npm run db:seed
+Seed database with test data (tsx prisma/seed.ts)
+npm run db:studio
+Launch Prisma Studio GUI (prisma studio)
+
+
+9.6 Current Project Directory Tree (Actual)
+Line-by-line ASCII tree of every file currently on disk as of March 11, 2026. Generated from the filesystem — not manually typed.
+Frontend
+shelfsight-frontend/
+├── .env.example
+├── CLAUDE.md
+├── eslint.config.mjs
+├── Links
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── README.md
+├── ShelfSight Benchmark.md
+├── tsconfig.json
+├── tsconfig.tsbuildinfo
+├── public/
+│   └── ShelfSight Logo.png
+└── src/
+    ├── app/
+    │   ├── favicon.ico
+    │   ├── globals.css
+    │   ├── layout.tsx
+    │   ├── page.tsx
+    │   └── (dashboard)/
+    │       ├── layout.tsx
+    │       ├── catalog/
+    │       │   ├── constants.ts
+    │       │   ├── mock-data.ts
+    │       │   ├── page.tsx
+    │       │   ├── components/
+    │       │   │   ├── book-detail-sheet.tsx
+    │       │   │   ├── book-form-dialog.tsx
+    │       │   │   ├── catalog-grid.tsx
+    │       │   │   ├── catalog-pagination.tsx
+    │       │   │   ├── catalog-stats.tsx
+    │       │   │   ├── catalog-table.tsx
+    │       │   │   ├── catalog-toolbar.tsx
+    │       │   │   └── delete-confirm-dialog.tsx
+    │       │   └── hooks/
+    │       │       └── use-catalog-state.ts
+    │       ├── circulation/
+    │       │   ├── constants.ts
+    │       │   ├── mock-data.ts
+    │       │   ├── page.tsx
+    │       │   ├── components/
+    │       │   │   ├── active-loans-table.tsx
+    │       │   │   ├── checkin-confirm-dialog.tsx
+    │       │   │   ├── checkin-tab.tsx
+    │       │   │   ├── checkout-tab.tsx
+    │       │   │   ├── circulation-pagination.tsx
+    │       │   │   ├── circulation-stats.tsx
+    │       │   │   ├── fines-tab.tsx
+    │       │   │   ├── loan-detail-sheet.tsx
+    │       │   │   ├── overdue-alert-banner.tsx
+    │       │   │   ├── renew-dialog.tsx
+    │       │   │   └── transaction-history-table.tsx
+    │       │   └── hooks/
+    │       │       └── use-circulation-state.ts
+    │       ├── dashboard/
+    │       │   └── page.tsx
+    │       ├── ingest/
+    │       │   └── page.tsx
+    │       ├── map/
+    │       │   └── page.tsx
+    │       ├── members/
+    │       │   └── page.tsx
+    │       └── reports/
+    │           ├── constants.ts
+    │           ├── mock-data.ts
+    │           ├── page.tsx
+    │           ├── types.ts
+    │           ├── components/
+    │           │   ├── chart-card.tsx
+    │           │   ├── circulation-tab.tsx
+    │           │   ├── collection-tab.tsx
+    │           │   ├── custom-tooltip.tsx
+    │           │   ├── financial-tab.tsx
+    │           │   ├── kpi-card.tsx
+    │           │   ├── members-tab.tsx
+    │           │   ├── overview-tab.tsx
+    │           │   ├── peak-hours-heatmap.tsx
+    │           │   └── report-header.tsx
+    │           └── hooks/
+    │               └── use-reports-state.ts
+    ├── components/
+    │   ├── auth-provider.tsx
+    │   ├── providers.tsx
+    │   ├── map/
+    │   │   ├── CanvasToolbar.tsx
+    │   │   ├── data.ts
+    │   │   ├── LibraryMapCanvas.tsx
+    │   │   ├── MapCallbacksContext.tsx
+    │   │   ├── MapCanvas.tsx
+    │   │   ├── MapControls.tsx
+    │   │   ├── MapLegend.tsx
+    │   │   ├── ShelfFirstPersonView.tsx
+    │   │   ├── ShelfNode.tsx
+    │   │   ├── ShelfPalette.tsx
+    │   │   ├── ShelfSectionCard.tsx
+    │   │   ├── ShelfSettingsPanel.tsx
+    │   │   ├── ShelfViewer.tsx
+    │   │   ├── shelfViewerData.ts
+    │   │   ├── types.ts
+    │   │   ├── useMapHistory.ts
+    │   │   └── utils.ts
+    │   └── ui/
+    │       ├── accordion.tsx
+    │       ├── alert.tsx
+    │       ├── alert-dialog.tsx
+    │       ├── aspect-ratio.tsx
+    │       ├── avatar.tsx
+    │       ├── badge.tsx
+    │       ├── breadcrumb.tsx
+    │       ├── button.tsx
+    │       ├── calendar.tsx
+    │       ├── card.tsx
+    │       ├── carousel.tsx
+    │       ├── chart.tsx
+    │       ├── checkbox.tsx
+    │       ├── collapsible.tsx
+    │       ├── command.tsx
+    │       ├── context-menu.tsx
+    │       ├── dialog.tsx
+    │       ├── drawer.tsx
+    │       ├── dropdown-menu.tsx
+    │       ├── form.tsx
+    │       ├── hover-card.tsx
+    │       ├── input.tsx
+    │       ├── input-otp.tsx
+    │       ├── label.tsx
+    │       ├── menubar.tsx
+    │       ├── navigation-menu.tsx
+    │       ├── pagination.tsx
+    │       ├── popover.tsx
+    │       ├── progress.tsx
+    │       ├── radio-group.tsx
+    │       ├── resizable.tsx
+    │       ├── scroll-area.tsx
+    │       ├── select.tsx
+    │       ├── separator.tsx
+    │       ├── sheet.tsx
+    │       ├── sidebar.tsx
+    │       ├── skeleton.tsx
+    │       ├── slider.tsx
+    │       ├── sonner.tsx
+    │       ├── switch.tsx
+    │       ├── table.tsx
+    │       ├── tabs.tsx
+    │       ├── textarea.tsx
+    │       ├── toggle.tsx
+    │       ├── toggle-group.tsx
+    │       ├── tooltip.tsx
+    │       └── use-mobile.ts
+    ├── lib/
+    │   ├── api.ts
+    │   ├── auth.ts
+    │   ├── books.ts
+    │   └── utils.ts
+    └── types/
+        ├── book.ts
+        └── circulation.ts
+
+Backend
+shelfsight-backend/
+├── .env
+├── .env.example
+├── docker-compose.yml
+├── package-lock.json
+├── package.json
+├── README.md
+├── tsconfig.json
+├── prisma/
+│   ├── schema.prisma
+│   ├── seed.ts
+│   └── migrations/
+│       ├── migration_lock.toml
+│       ├── 20260223230904_init/
+│       │   └── migration.sql
+│       └── 20260309151459_add_book_copy_events/
+│           └── migration.sql
+└── src/
+    ├── app.ts
+    ├── index.ts
+    ├── controllers/
+    │   ├── auth.controller.ts
+    │   ├── books.controller.ts
+    │   ├── ingest.controller.ts
+    │   ├── loans.controller.ts
+    │   └── users.controller.ts
+    ├── lambdas/
+    │   └── ingest.handler.ts
+    ├── lib/
+    │   └── prisma.ts
+    ├── middleware/
+    │   └── auth.middleware.ts
+    ├── routes/
+    │   ├── auth.ts
+    │   ├── books.ts
+    │   ├── index.ts
+    │   ├── ingest.ts
+    │   ├── loans.ts
+    │   └── users.ts
+    └── services/
+        ├── auth.service.ts
+        ├── books.service.ts
+        ├── ingest.service.ts
+        ├── loans.service.ts
+        └── users.service.ts
+
+
+10. Hardware & Software Requirements
+Development Machine Minimum: 8 GB RAM, Quad-core CPU, 20 GB SSD storage
+Testing Device: Android or iOS smartphone, Camera required for book scanning
+
+11. Project Timeline
+Phase
+Dates
+Deliverables
+Phase 1
+Feb 10 – Feb 16
+Repo setup, Next.js scaffold, Express server
+Phase 2
+Feb 17 – Feb 23
+API contract, benchmarking, AI tool research
+Phase 3
+Feb 24 – Mar 2
+Authentication system, architecture planning
+Phase 4
+Mar 3 – Mar 9
+CRUD APIs, finalized UI mockups
+Phase 5
+Mar 10 – Mar 16
+UI components + circulation endpoints
+Phase 6
+Mar 17 – Mar 23
+Catalog UI connected to API
+Phase 7
+Mar 24 – Mar 30
+Circulation workflow
+Phase 8
+Mar 31 – Apr 6
+Shelf browsing UI
+Phase 9
+Apr 7 – Apr 13
+MVP Alpha
+Phase 10
+Apr 14 – Apr 20
+Map prototype + OCR pipeline
+Phase 11
+Apr 21 – Apr 27
+Beta version
+Phase 12
+Apr 28 – May 4
+Deployment
+Phase 13
+May 5 – May 8
+Final demo
+
+
+12. Sprint Planning & Architecture Report
+This sprint focused on transitioning from initial system setup into architectural planning and AI pipeline design.
+Five primary workstreams were addressed:
+Technical specification and architecture
+Frontend scaffolding and design alignment
+Backend API stabilization
+AI tooling evaluation
+Project infrastructure setup
+Key results included: Finalized system architecture, Async ingestion design, RBAC authentication model, AI governance framework, Benchmark comparisons with existing LMS systems.
+This sprint establishes the core architectural blueprint for the project.
+
+13. Agent Guardrails and Instructions
+Read this section before writing a single line of code. These rules override any other instinct or default behavior. When this spec and your judgment conflict, implement the spec and leave a // SPEC QUESTION: comment.
+13.1 Phase Gates
+ShelfSight is built across 13 phases (see Section 11). Each phase has a gating rule:
+Phases 1–4 (Foundation): Repo setup, API contract, authentication system, and CRUD APIs must be fully implemented and manually verified before any UI work begins.
+Phases 5–7 (Core UI + Integration): Do NOT start connecting frontend to backend until the underlying API endpoints return correct responses when tested via curl or Postman. All circulation endpoints must pass before the circulation workflow phase.
+Phases 8–10 (Map + AI): The shelf browsing UI, map prototype, and OCR pipeline depend on completed catalog and circulation features. Do not begin map or AI work until the catalog UI is fully connected to live API data.
+Phases 11–13 (Polish + Deploy): Beta and deployment phases require all MVP features to be functional. Do not begin deployment until the Alpha milestone (Phase 9) passes end-to-end manual testing.
+13.2 Build Order Within Each Feature
+For every feature, build in this exact order:
+Database schema (Prisma migration)
+Backend route + controller + service
+Backend manual verification (curl / Postman)
+Frontend UI (page + components + hooks)
+End-to-end verification (frontend → backend → database)
+Complete each feature fully (backend + frontend + verification) before moving to the next feature in the same phase. After completing each feature, verify it satisfies every requirement ID listed for that feature before moving on.
+13.3 Decision Rules
+Ambiguity: When the spec is ambiguous, implement the simpler interpretation and add:
+// SPEC QUESTION: [description of ambiguity]
+Architecture: When making an architectural decision not covered by this spec, add:
+// ARCH DECISION: [explanation]
+Spec errors: If you believe the spec has an error, implement it as written and add:
+// SPEC ERROR: [concern]
+Source of truth: The spec is always right. The Prisma schema (schema.prisma) is the single source of truth for the data model. The route files (src/routes/*.ts) are the single source of truth for the API contract. When in doubt, match the spec.
+No unapproved dependencies: Do not add libraries, frameworks, or tools not listed in Section 9. If you must introduce one, add a // ARCH DECISION: comment and document the dependency. The banned technologies list in Section 9.4 is non-negotiable.
+Out of scope: Do not implement any feature listed in Section 2.2 (Out of Scope) unless this spec is explicitly amended. This includes drag-and-drop shelf reorganization, analytics dashboards beyond reports, barcode/QR generation, and the custom map editor.
+13.4 Security Rules (Non-Negotiable)
+These rules apply to every line of code in the project. Violations are blocking—code that breaks these rules must not be merged.
+No hardcoded secrets. All API keys, JWT secrets, database URLs, and AWS credentials must come from environment variables via .env. Never commit .env files to version control.
+AWS credentials stay server-side. AWS access keys, S3 bucket names, Textract configuration, and SQS queue URLs must never appear in frontend code, browser network requests, or client-side bundles. All AWS operations happen exclusively in the backend or Lambda handlers.
+OpenAI API key stays server-side. The OpenAI SDK is a backend-only dependency. The key must never be referenced in frontend code, exposed in API responses, or logged.
+JWT tokens are HttpOnly cookies. Access and refresh tokens are set as HttpOnly, Secure, SameSite=Strict cookies. Never store JWT tokens in localStorage or sessionStorage. Never expose tokens in API response bodies beyond the initial login response.
+All queries scoped to authenticated user. Every database query that returns user-specific data must filter by the authenticated user’s ID or verify ownership. No IDOR vulnerabilities. Patron-role users must not access Admin or Staff endpoints.
+RBAC enforced at the middleware level. Role checks (ADMIN, STAFF, PATRON) must happen in auth.middleware.ts via requireRole(), not in controllers or services. Never rely on frontend-only role checks.
+No stack traces in production. All production errors return the universal error envelope (Section 7.1) with a generic message. Full stack traces are logged server-side via Morgan only.
+S3 buckets are private. All book cover and spine images stored in S3 use private ACLs. Frontend access to images must go through pre-signed URLs generated by the backend. Never make S3 objects publicly readable.
+File upload limits enforced. Multer is configured with a 10 MB limit. Reject files exceeding this size with HTTP 413. Only accept image MIME types (image/jpeg, image/png, image/webp) for the ingestion endpoint.
+CORS origin is explicit. Never use wildcard (*) in production CORS configuration. The allowed origin must match FRONTEND_URL from the environment.
+13.5 File Placement Rules
+All source files must reside in the locations defined in Sections 9.5.1 and 9.5.2. Do not create files outside the established structure without amending this section. Key rules:
+Frontend pages: One page.tsx per route segment under src/app/(dashboard)/. Default export required (Next.js convention).
+Route-specific components: Co-located in src/app/(dashboard)/<feature>/components/. Named exports. Kebab-case filenames.
+Shared components: Cross-route components go in src/components/<domain>/. PascalCase filenames. UI primitives in src/components/ui/ are shadcn-generated only—never hand-write them.
+Backend layers: Routes define HTTP verbs and delegate to controllers. Controllers handle req/res and delegate to services. Services contain business logic and call Prisma. Never put business logic in controllers. Never import req/res objects in services.
+Database access: All queries go through Prisma Client (src/lib/prisma.ts singleton). No raw SQL in application code. Migrations may use raw SQL.
+13.6 Code Quality Standards
+Rule
+Enforcement
+TypeScript strict mode
+No any unless explicitly unavoidable. Use unknown with type guards or define proper interfaces.
+No console.log in production
+Use Morgan for HTTP logging. Structured logging only.
+Named exports only
+Default exports banned except for Next.js page/layout conventions and Express route modules.
+No CSS files beyond globals.css
+All styling via Tailwind utility classes. No CSS Modules, no Styled Components.
+Error envelope compliance
+Every API error must match the universal JSON format in Section 7.1. No ad-hoc error shapes.
+Prisma is the ORM
+No Sequelize, TypeORM, Knex, or raw SQL in application code.
+npm is the package manager
+No Yarn, pnpm, or Bun. Lockfile is package-lock.json.
+
+
+13.7 AI Ingestion Pipeline Rules
+The AI ingestion pipeline (Section 8) has additional constraints due to its interaction with external services and its impact on catalog data integrity:
+AI outputs are advisory only. No AI-generated metadata (Dewey classification, ISBN detection, title/author enrichment) may be written to the catalog automatically. All AI results must pass through the staff review interface before being committed.
+Confidence scores are mandatory. Every AI response must include a confidence score between 0.0 and 1.0. The frontend must display this score to the reviewing staff member.
+Current flow is synchronous. The current implementation uses POST /ingest/analyze (synchronous). The async architecture (SQS + Lambda) is planned but not yet wired. Do not implement the async endpoints (GET /ingest/jobs/:id, POST /ingest/jobs/:id/approve, POST /ingest/jobs/:id/reject) until the SQS integration is explicitly scheduled.
+Textract errors are non-fatal. If AWS Textract fails or returns empty text, the ingestion response should still return with ocrText: null and allow the staff member to enter metadata manually. Never throw a 500 for an OCR failure.
+Image cleanup. Uploaded images stored in Multer memory must not persist beyond the request lifecycle. Once uploaded to S3, the in-memory buffer must be released.
+13.8 Library Map Rules
+The 2D library map (React Flow) is a complex interactive component. Agents working on the map module must follow these constraints:
+Map endpoints are not yet implemented. Section 7 notes that all /map/* routes currently return 501 Not Implemented. Do not build frontend map features that depend on backend persistence until the map API routes are implemented.
+All map components live in src/components/map/. This is a shared component directory, not co-located under the /map route, because map components are used across multiple pages (catalog lookup, circulation shelving, etc.).
+ShelfSection is the canonical entity. Map nodes must correspond to ShelfSection records in the database. Do not invent alternative data structures for shelf positioning. The mapX, mapY, width, and height fields on ShelfSection are the source of truth for node placement.
+React Flow is the only canvas library. Do not introduce D3, Konva, Fabric.js, or raw Canvas API. All map rendering goes through @xyflow/react.
+13.9 Handling Gaps
+If this spec does not cover a situation you encounter, apply these rules in order:
+Check if a similar pattern is already established elsewhere in the spec. Follow it.
+Check the existing codebase for a precedent. Match the established pattern.
+Choose the approach that is most consistent with the three-layer architecture (Section 5).
+Choose the simpler of two reasonable approaches.
+Leave a // SPEC QUESTION: comment explaining your choice.
+
