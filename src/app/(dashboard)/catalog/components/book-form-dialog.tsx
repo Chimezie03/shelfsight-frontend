@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { createBook, updateBook } from "@/lib/books";
 import { getDeweyCategory, LANGUAGES, STATUS_OPTIONS } from "../constants";
@@ -175,11 +174,11 @@ export function BookFormDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
           <form
             id="book-form"
             onSubmit={handleSubmit(onSubmit)}
-            className="space-y-6 pb-4"
+            className="space-y-6 pb-6"
           >
             {/* Section 1: Core Information */}
             <div>
@@ -445,30 +444,29 @@ export function BookFormDialog({
                 </div>
               </div>
             </div>
+            <DialogFooter className="px-0 pt-2 pb-1 border-t">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="book-form"
+                className="bg-brand-navy hover:bg-brand-navy/90 text-white"
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? "Saving..."
+                  : isEdit
+                    ? "Save Changes"
+                    : "Add Book"}
+              </Button>
+            </DialogFooter>
           </form>
-        </ScrollArea>
-
-        <DialogFooter className="px-6 py-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="book-form"
-            className="bg-brand-navy hover:bg-brand-navy/90 text-white"
-            disabled={isSubmitting}
-          >
-            {isSubmitting
-              ? "Saving..."
-              : isEdit
-                ? "Save Changes"
-                : "Add Book"}
-          </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

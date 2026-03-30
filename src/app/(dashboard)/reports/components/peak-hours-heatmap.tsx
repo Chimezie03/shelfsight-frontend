@@ -63,7 +63,7 @@ export function PeakHoursHeatmap({ data, isLoading = false }: PeakHoursHeatmapPr
 
             {/* Rows: day label + cells */}
             {HEATMAP_DAYS.map((day) => (
-              <>
+              <div key={`row-${day}`} className="contents">
                 <div
                   key={`d-${day}`}
                   className="text-[11px] text-muted-foreground font-medium flex items-center pr-2"
@@ -91,7 +91,7 @@ export function PeakHoursHeatmap({ data, isLoading = false }: PeakHoursHeatmapPr
                     </Tooltip>
                   );
                 })}
-              </>
+              </div>
             ))}
           </div>
         </div>
