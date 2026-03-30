@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { exportBooksCsv } from "@/lib/books";
 import { useCatalogState } from "./hooks/use-catalog-state";
@@ -97,6 +99,18 @@ export default function CatalogPage() {
         onExportSelected={handleExportSelected}
         userRole={user?.role}
       />
+
+      {catalog.error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>Unable to load catalog</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span>{catalog.error}</span>
+            <Button variant="outline" size="sm" onClick={catalog.refreshBooks}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Results */}
       <Card>

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, BookOpen, CheckCircle2, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,6 +60,16 @@ const emptyReviewState: ReviewState = {
 };
 
 export default function BookIngestionPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const canAccess = user?.role === "ADMIN" || user?.role === "STAFF";
+
+  useEffect(() => {
+    if (user && !canAccess) {
+      router.replace("/dashboard");
+    }
+  }, [user, canAccess, router]);
+
   const [isbnInput, setIsbnInput] = useState("");
   const [reviewData, setReviewData] = useState<ReviewState | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
@@ -159,6 +171,10 @@ export default function BookIngestionPage() {
       setIsSaving(false);
     }
   };
+
+  if (user && !canAccess) {
+    return null;
+  }
 
   return (
     <div className="p-8">

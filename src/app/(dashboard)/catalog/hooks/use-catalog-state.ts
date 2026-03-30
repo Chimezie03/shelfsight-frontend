@@ -31,6 +31,7 @@ export function useCatalogState() {
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -73,6 +74,7 @@ export function useCatalogState() {
   // Fetch books
   const fetchBooks = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const params: BookQueryParams = {
         search: debouncedSearch || undefined,
@@ -92,10 +94,18 @@ export function useCatalogState() {
       setTotal(result.total);
 
       // Also fetch all (unfiltered, unpaginated) for stats
-      const allResult = await getBooks({ pageSize: 9999 });
-      setAllBooks(allResult.books);
-    } catch {
+      try {
+        const allResult = await getBooks({ pageSize: 9999 });
+        setAllBooks(allResult.books);
+      } catch {
+        setAllBooks(result.books);
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load catalog data";
+      setError(message);
       setBooks([]);
+      setAllBooks([]);
       setTotal(0);
     } finally {
       setIsLoading(false);
@@ -181,6 +191,7 @@ export function useCatalogState() {
     allBooks,
     total,
     isLoading,
+    error,
 
     // Search
     searchQuery,

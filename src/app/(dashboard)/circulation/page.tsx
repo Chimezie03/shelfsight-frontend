@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { toast } from "sonner";
 import { useCirculationState } from "./hooks/use-circulation-state";
@@ -16,15 +20,33 @@ import { FinesTab } from "./components/fines-tab";
 import { TransactionHistoryTable } from "./components/transaction-history-table";
 
 export default function CirculationPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const circ = useCirculationState();
+  const canAccess = user?.role === "ADMIN" || user?.role === "STAFF";
+
+  useEffect(() => {
+    if (user && !canAccess) {
+      router.replace("/dashboard");
+    }
+  }, [user, canAccess, router]);
+
+  if (user && !canAccess) {
+    return null;
+  }
 
   const handleCheckout = async () => {
-    const result = await circ.processCheckout();
-    if (result) {
-      toast.success(
-        `Checked out ${result.count} book${result.count !== 1 ? "s" : ""} to ${result.memberName}`
-      );
+    try {
+      const result = await circ.processCheckout();
+      if (result) {
+        toast.success(
+          `Checked out ${result.count} book${result.count !== 1 ? "s" : ""} to ${result.memberName}`
+        );
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Checkout could not be completed";
+      toast.error(message);
     }
   };
 
@@ -33,15 +55,21 @@ export default function CirculationPage() {
   };
 
   const handleConfirmCheckin = async (loan: Parameters<typeof circ.processCheckin>[0]) => {
-    const result = await circ.processCheckin(loan);
-    if (result) {
-      if (result.fine > 0) {
-        toast.success(
-          `"${result.bookTitle}" returned — fine of $${result.fine.toFixed(2)} applied`
-        );
-      } else {
-        toast.success(`"${result.bookTitle}" returned successfully`);
+    try {
+      const result = await circ.processCheckin(loan);
+      if (result) {
+        if (result.fine > 0) {
+          toast.success(
+            `"${result.bookTitle}" returned — fine of $${result.fine.toFixed(2)} applied`
+          );
+        } else {
+          toast.success(`"${result.bookTitle}" returned successfully`);
+        }
       }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Check-in could not be completed";
+      toast.error(message);
     }
   };
 
@@ -94,6 +122,18 @@ export default function CirculationPage() {
         totalFines={circ.totalOutstandingFines}
         onViewOverdue={circ.goToOverdue}
       />
+
+      {circ.loadError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>Unable to fully load circulation data</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span>{circ.loadError}</span>
+            <Button variant="outline" size="sm" onClick={circ.reloadData}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Tabs */}
       <Tabs value={circ.activeTab} onValueChange={circ.setActiveTab} className="space-y-6">

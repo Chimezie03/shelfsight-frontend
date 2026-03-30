@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useAuth } from "@/components/auth-provider";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +116,16 @@ async function fetchAllLoansForUser(userId: string) {
 }
 
 export default function MembersPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const canAccess = user?.role === "ADMIN";
+
+  useEffect(() => {
+    if (user && !canAccess) {
+      router.replace("/dashboard");
+    }
+  }, [user, canAccess, router]);
+
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"ALL" | UserRole>("ALL");
@@ -192,6 +204,10 @@ export default function MembersPage() {
 
   const staffCount = users.filter((user) => user.role === "STAFF").length;
   const patronCount = users.filter((user) => user.role === "PATRON").length;
+
+  if (user && !canAccess) {
+    return null;
+  }
 
   return (
     <div className="p-8">

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { subDays, startOfDay, endOfDay, startOfYear, format } from "date-fns";
 import type { DateRange, PresetRange, ReportsData } from "../types";
-import { generateReportsData } from "../mock-data";
+import { fetchReportsData } from "@/lib/reports";
 
 function getPresetRange(preset: PresetRange): { from: Date; to: Date } {
   const now = new Date();
@@ -54,33 +54,47 @@ export function useReportsState() {
     return { from, to, preset: "30d" };
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const loadingTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<ReportsData | null>(null);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function triggerLoading() {
+  const loadReports = useCallback(async (range: DateRange) => {
     setIsLoading(true);
-    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
-    loadingTimerRef.current = setTimeout(() => setIsLoading(false), 500);
-  }
+    setError(null);
+    try {
+      const result = await fetchReportsData(range);
+      setData(result);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load reports data";
+      setError(message);
+    } finally {
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+      loadingTimerRef.current = setTimeout(() => setIsLoading(false), 150);
+    }
+  }, []);
 
-  const data: ReportsData = useMemo(() => {
-    return generateReportsData(dateRange);
-  }, [dateRange]);
+  useEffect(() => {
+    loadReports(dateRange);
+    return () => {
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    };
+  }, [dateRange, loadReports]);
 
   const handlePresetChange = useCallback((preset: PresetRange) => {
     if (preset === "custom") return;
     const { from, to } = getPresetRange(preset);
     setDateRange({ from, to, preset });
-    triggerLoading();
   }, []);
 
   const handleCustomRangeChange = useCallback((from: Date, to: Date) => {
     setDateRange({ from: startOfDay(from), to: endOfDay(to), preset: "custom" });
-    triggerLoading();
   }, []);
 
   const handleExportCsv = useCallback(
     (tabName: string) => {
+      if (!data) return;
       switch (tabName) {
         case "circulation": {
           const headers = ["Period", "Checkouts", "Returns", "Renewals"];
@@ -148,6 +162,10 @@ export function useReportsState() {
     window.print();
   }, []);
 
+  const retry = useCallback(() => {
+    loadReports(dateRange);
+  }, [dateRange, loadReports]);
+
   return {
     activeTab,
     setActiveTab,
@@ -156,7 +174,9 @@ export function useReportsState() {
     handleCustomRangeChange,
     data,
     isLoading,
+    error,
     handleExportCsv,
     handlePrint,
+    retry,
   };
 }

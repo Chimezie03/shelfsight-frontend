@@ -7,6 +7,70 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function extractPagination(meta: unknown): UnknownRecord | undefined {
+  if (!isRecord(meta)) {
+    return undefined;
+  }
+
+  const nested = meta.pagination;
+  if (isRecord(nested)) {
+    return nested;
+  }
+
+  if (
+    typeof meta.page === 'number' &&
+    typeof meta.limit === 'number' &&
+    typeof meta.total === 'number' &&
+    typeof meta.totalPages === 'number'
+  ) {
+    return {
+      page: meta.page,
+      limit: meta.limit,
+      total: meta.total,
+      totalPages: meta.totalPages,
+    };
+  }
+
+  return undefined;
+}
+
+function normalizeSuccessPayload(payload: unknown): unknown {
+  if (!isRecord(payload)) {
+    return payload;
+  }
+
+  // Support universal API envelope shape: { success, data, meta, error }.
+  if (typeof payload.success === 'boolean' && 'data' in payload) {
+    const envelopeData = payload.data;
+    const pagination = extractPagination(payload.meta);
+
+    if (Array.isArray(envelopeData)) {
+      if (pagination) {
+        return { data: envelopeData, pagination };
+      }
+      return envelopeData;
+    }
+
+    if (isRecord(envelopeData)) {
+      if (pagination && !('pagination' in envelopeData)) {
+        return { ...envelopeData, pagination };
+      }
+      return envelopeData;
+    }
+
+    return envelopeData;
+  }
+
+  // Legacy backend payloads are already returned in final shape.
+  return payload;
+}
+
 export class ApiError extends Error {
   status: number;
   data: Record<string, unknown>;
@@ -62,8 +126,11 @@ export async function apiFetch<T = unknown>(
       // response body may not be JSON
     }
 
+    const envelopeError = isRecord(errorData.error) ? errorData.error : undefined;
+
     const message =
-      (errorData.message as string) ||
+      (typeof envelopeError?.message === 'string' ? envelopeError.message : undefined) ||
+      (typeof errorData.message === 'string' ? errorData.message : undefined) ||
       (res.status === 401
         ? 'Invalid credentials'
         : res.status === 403
@@ -78,5 +145,6 @@ export async function apiFetch<T = unknown>(
     return undefined as T;
   }
 
-  return res.json() as Promise<T>;
+  const payload = await res.json();
+  return normalizeSuccessPayload(payload) as T;
 }

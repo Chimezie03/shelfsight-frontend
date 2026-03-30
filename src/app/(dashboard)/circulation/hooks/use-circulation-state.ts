@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import type {
   CirculationMember,
   CirculationBook,
@@ -143,6 +143,7 @@ export function useCirculationState() {
   const [fines, setFines] = useState<Fine[]>([]);
   const [transactionLog, setTransactionLog] = useState<TransactionLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // ─── Tab ─────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("checkout");
@@ -188,12 +189,8 @@ export function useCirculationState() {
 
   // ─── Fetch loans from API ────────────────────────────────
   const fetchLoans = useCallback(async () => {
-    try {
-      const result = await apiFetch<BackendLoansResponse>("/loans?status=active&limit=100");
-      setLoans(result.data.map(backendLoanToLoan));
-    } catch {
-      // keep existing
-    }
+    const result = await apiFetch<BackendLoansResponse>("/loans?status=active&limit=100");
+    setLoans(result.data.map(backendLoanToLoan));
   }, []);
 
   // ─── Fetch members from API ──────────────────────────────
@@ -201,36 +198,73 @@ export function useCirculationState() {
     try {
       const users = await apiFetch<BackendUser[]>("/users");
       setMembers(users.map(backendUserToMember));
-    } catch {
-      setMembers([]);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        const loansRes = await apiFetch<BackendLoansResponse>("/loans?limit=500");
+        const map = new Map<string, CirculationMember>();
+        for (const loan of loansRes.data) {
+          const key = loan.user.id;
+          if (!map.has(key)) {
+            map.set(key, {
+              id: loan.user.id,
+              name: loan.user.name,
+              email: loan.user.email,
+              phone: "",
+              memberNumber: loan.user.email,
+              status: "active",
+              activeLoans: 0,
+              maxLoans: 10,
+              totalFinesOwed: 0,
+            });
+          }
+          if (!loan.returnedAt) {
+            const existing = map.get(key);
+            if (existing) existing.activeLoans += 1;
+          }
+        }
+        setMembers(Array.from(map.values()));
+        return;
+      }
+      throw err;
     }
   }, []);
 
   // ─── Fetch books from API (for checkout search) ──────────
   const fetchBooks = useCallback(async (search?: string) => {
-    try {
-      const q = search ? `?title=${encodeURIComponent(search)}&limit=20` : "?limit=50";
-      const res = await apiFetch<BackendBooksResponse>(`/books${q}`);
-      setBooks(res.data.map(backendBookToCircBook));
-    } catch {
-      setBooks([]);
-    }
+    const q = search ? `?title=${encodeURIComponent(search)}&limit=20` : "?limit=50";
+    const res = await apiFetch<BackendBooksResponse>(`/books${q}`);
+    setBooks(res.data.map(backendBookToCircBook));
   }, []);
 
   // ─── Initial data load ──────────────────────────────────
-  useEffect(() => {
-    async function init() {
-      setIsLoading(true);
-      await Promise.all([fetchLoans(), fetchMembers(), fetchBooks()]);
-      setIsLoading(false);
+  const reloadData = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    const results = await Promise.allSettled([fetchLoans(), fetchMembers(), fetchBooks()]);
+    const firstFailure = results.find((result) => result.status === "rejected");
+    if (firstFailure && firstFailure.status === "rejected") {
+      const reason = firstFailure.reason;
+      const message =
+        reason instanceof Error ? reason.message : "Failed to load circulation data";
+      setLoadError(message);
     }
-    init();
+    setIsLoading(false);
   }, [fetchLoans, fetchMembers, fetchBooks]);
+
+  useEffect(() => {
+    reloadData();
+  }, [reloadData]);
 
   // ─── Debounced book search ───────────────────────────────
   useEffect(() => {
     if (!bookSearch.trim()) return;
-    const t = setTimeout(() => fetchBooks(bookSearch.trim()), 350);
+    const t = setTimeout(() => {
+      fetchBooks(bookSearch.trim()).catch((err) => {
+        const message =
+          err instanceof Error ? err.message : "Failed to search books";
+        setLoadError(message);
+      });
+    }, 350);
     return () => clearTimeout(t);
   }, [bookSearch, fetchBooks]);
 
@@ -690,6 +724,7 @@ export function useCirculationState() {
     fines,
     transactionLog,
     isLoading,
+    loadError,
 
     // Tab
     activeTab,
@@ -776,5 +811,6 @@ export function useCirculationState() {
     // Utilities
     getDaysOverdue,
     calculateFine,
+    reloadData,
   };
 }

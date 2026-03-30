@@ -84,26 +84,44 @@ export async function getBooks(
 
   // Map frontend query params to backend query params
   if (params.search) searchParams.set("title", params.search);
-  if (params.category && params.category !== "all") {
-    searchParams.set("genre", params.category);
-  }
 
   // Pagination
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 10;
-  searchParams.set("page", String(page));
-  searchParams.set("limit", String(pageSize));
+  const filterByCategory = !!params.category && params.category !== "all";
+
+  // Category labels in the UI are Dewey-derived and do not always match backend
+  // genre values (e.g. "Literature" vs seeded "Fiction"), so fetch a larger
+  // slice and apply category filtering on transformed data client-side.
+  searchParams.set("page", filterByCategory ? "1" : String(page));
+  searchParams.set("limit", filterByCategory ? "1000" : String(pageSize));
 
   const qs = searchParams.toString();
   const res = await apiFetch<BackendBooksResponse>(
     `/books${qs ? `?${qs}` : ""}`
   );
 
+  const transformed = res.data.map(transformBook);
+  if (!filterByCategory) {
+    return {
+      books: transformed,
+      total: res.pagination.total,
+      page: res.pagination.page,
+      pageSize: res.pagination.limit,
+    };
+  }
+
+  const categoryFiltered = filterByCategory
+    ? transformed.filter((book) => book.category === params.category)
+    : transformed;
+  const start = (page - 1) * pageSize;
+  const paginated = categoryFiltered.slice(start, start + pageSize);
+
   return {
-    books: res.data.map(transformBook),
-    total: res.pagination.total,
-    page: res.pagination.page,
-    pageSize: res.pagination.limit,
+    books: paginated,
+    total: categoryFiltered.length,
+    page,
+    pageSize,
   };
 }
 
