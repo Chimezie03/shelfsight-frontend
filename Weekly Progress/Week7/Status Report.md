@@ -57,11 +57,19 @@
 | Name | Details |
 |------|---------|
 | **Kaelen Raible** | **Tasks completed:** |
-| | • |
+| | • Deployed backend (Node.js/Express) to Render, configured environment variables for AWS S3, Textract, and Neon Postgres
+| | • Set up AWS S3 bucket, IAM user, and Textract permissions for production ingestion pipeline
+| | • Connected Neon Postgres to backend, handled Prisma migration and production seeding
+| | • Deployed frontend (Next.js) to Vercel, configured environment for production API URL
+| | • Synced CORS and authentication settings between frontend and backend for secure cross-origin login
+| | • Debugged and resolved production authentication issues (SameSite=None cookie, CORS, JWT flow)
 | **Time Spent:** | **Planned tasks for next week:** |
-| | • |
+| 14 hours | **Planned tasks for next week:** |
+| | • Production monitoring and error alerting setup
+| | • Assist with multi-tenancy and WorldCat integration planning
 | | **Any issues or challenges:** |
-| | • |
+| | • Render free plan lacks shell access, required workaround for production DB seeding
+| | • Cross-origin authentication required cookie and CORS config changes for Vercel/Render
 ---
 
 | Name | Details |
