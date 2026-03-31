@@ -42,11 +42,15 @@
 | Name | Details |
 |------|---------|
 | **Chimezie Nnawuihe** | **Tasks completed:** |
-| | • |
-| **Time Spent:** | **Planned tasks for next week:** |
-| | • |
+| | • Removed mock data in Catalog, Circulation, and Reports, and connected those pages to live backend data |
+| | • Wired core frontend workflows (catalog list/detail, checkout flow, active loans table, reports tabs) through the centralized API client |
+| | • Added loading, empty, error, and retry states across Catalog, Circulation, and Reports pages so live data is handled consistently |
+| | • Set up role-based access on protected dashboard pages and connected login/session handling to backend HttpOnly cookies |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Notifications System |
+| | • Improve and polish dashboard pages|
 | | **Any issues or challenges:** |
-| | • |
+| | • No major issues or challenges |
 
 ---
 
