@@ -63,11 +63,19 @@
 | Name | Details |
 |------|---------|
 | **Syed Hasan** | **Tasks completed:** |
-| | • |
-| **Time Spent:** | **Planned tasks for next week:** |
-| | • |
+| | • Backend Finalization — implemented full RESTful /map API (GET, POST, PUT, DELETE) using the ShelfSection Prisma model, replacing 501 stubs and enabling persistent storage of map layout data for future React Flow integration |
+| | • Designed and implemented centralized error handling system — introduced AppError class, async middleware wrapper, and global error handler to enforce a universal JSON error envelope across all endpoints (auth, validation, Prisma errors, and runtime failures) |
+| | • Implemented GET /books/:id endpoint to resolve frontend/backend API parity, including mapping book data with associated copy metadata (availableCopies, totalCopies, availableCopyIds) for compatibility with catalog UI |
+| | • Refactored backend structure to align with project architecture — ensured clear separation of routes, controllers, and services, removed inline error responses, and standardized error propagation through middleware |
+| | • Added input validation and RBAC enforcement for map endpoints — authenticated access for reads and STAFF/ADMIN restrictions for mutations with proper HTTP status handling |
+| | • Conducted end-to-end backend verification through manual API testing (authentication flows, map CRUD operations, validation errors, RBAC scenarios, and edge cases such as missing resources and malformed requests) |
+| | • Prepared backend for frontend integration by stabilizing API contracts and ensuring consistent response structures across all endpoints |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Multi-organization/multi-tenancy support 
+| | • WorldCat integration for international book identification |
+| | • Barcode scanning via device camera |
 | | **Any issues or challenges:** |
-| | • |
+| | • No major issues encountered during this phase |
 ---
 
 **Total Time Spent: 12 hours
