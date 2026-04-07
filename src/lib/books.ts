@@ -21,6 +21,7 @@ interface BackendBook {
   availableCopies: number;
   totalCopies: number;
   availableCopyIds?: string[];
+  pageCount?: number | null;
   createdAt: string;
   shelfId?: string | null;
   shelfLabel?: string | null;
@@ -69,7 +70,7 @@ function transformBook(b: BackendBook): Book {
     publishYear,
     edition: "",
     language: "English",
-    pageCount: 0,
+    pageCount: b.pageCount ?? 0,
     description: "",
     subjects: b.genre ? [b.genre] : [],
     coverImageUrl: b.coverImageUrl ?? "",
@@ -165,6 +166,8 @@ export async function updateBook(
       deweyDecimal: data.dewey || undefined,
       coverImageUrl: data.coverImageUrl || undefined,
       publishYear: data.publishYear != null ? String(data.publishYear) : undefined,
+      pageCount: data.pageCount != null ? data.pageCount : undefined,
+      copies: data.copies != null ? data.copies : undefined,
     },
   });
   return transformBook(b);
