@@ -14,10 +14,10 @@
 | | • Extended backend updateBookService to accept shelfId parameter — when provided, assigns all AVAILABLE copies to the selected shelf within the existing transaction |
 | | • Ran full TypeScript compilation and Next.js production build to verify zero regressions across both frontend and backend |
 | | • Pulled latest changes from both repos and reconciled with teammate commits on main |
-| **Time Spent:** 11 hours | **Planned tasks for next week:** |
-| | • Catalog search fixes (KAN-58) |
-| | • Search debouncing implementation (KAN-61) |
-| | • Input validation across forms (KAN-59) |
+| **Time Spent:** 9 hours | **Planned tasks for next week:** |
+| | • |
+| | • |
+| | • |
 | | **Any issues or challenges:** |
 | | • Backend feature branch was behind main with significant divergence in books.service.ts; resolved by applying targeted shelfId fix to main branch instead of rebasing |
 
