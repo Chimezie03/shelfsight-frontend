@@ -26,11 +26,14 @@
 | Name | Details |
 |------|---------|
 | **Marc Manoj** | **Tasks completed:** |
-| | • |
-| **Time Spent:** hours | **Planned tasks for next week:** |
-| | • |
+| | • Oversaw improvements to ingestion reliability and review flow quality so batch uploads and metadata outcomes are easier for staff to trust and process |
+| | • Guided database and query optimization focus for Supabase to improve stability under larger catalog and ingestion workloads |
+| | • Coordinated final validation checks and release readiness across backend deployment touchpoints to keep the system stable for the team |
+| **Time Spent:** 9 hours | **Planned tasks for next week:** |
+| | • Continue reliability and performance monitoring after rollout and capture follow-up improvements |
+| | • Support integration planning for next sprint priorities and cross-team handoff items |
 | | **Any issues or challenges:** |
-| | • |
+| | • Balancing speed of delivery with low-risk changes required additional coordination and validation to avoid regressions |
 
 ---
 
@@ -67,7 +70,7 @@
 
 ---
 
-**Total Time Spent:** 11+ hours (other team members to be added)
+**Total Time Spent:** 20+ hours (other team members to be added)
 
 **Summary:**
 Week 8 focused on fixing critical catalog and map bugs. The book update flow (KAN-55) was verified as resolved on main, the map shelf viewer (KAN-57) was fixed to correctly handle the API response envelope unwrapping, and a shelf location dropdown (KAN-56) was added to the book edit form with full backend integration for shelf assignment. All changes were validated with TypeScript compilation and production builds across both repos.
