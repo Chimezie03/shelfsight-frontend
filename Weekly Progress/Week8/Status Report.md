@@ -40,11 +40,14 @@
 | Name | Details |
 |------|---------|
 | **Chimezie Nnawuihe** | **Tasks completed:** |
-| | • |
-| **Time Spent:** hours | **Planned tasks for next week:** |
-| | • |
+| | • Fixed catalog search behavior so filtering, searching, and refreshing stay in sync and show consistent results |
+| | • Improved the AI Book Ingestion page with stronger loading/error/success handling for metadata lookup and review actions |
+| | • Reduced redundant API calls and making request state more predictable across catalog and ingestion flows |
+| **Time Spent:** 10 hours | **Planned tasks for next week:** |
+| | • Improve OCR/ISBN fallback reliability |
 | | **Any issues or challenges:** |
-| | • |
+| | • Image quality affected OCR/ISBN extraction so manual metadata review was needed often |
+| | • Merge conflicts after syncing introduced inconsistencies |
 
 ---
 
