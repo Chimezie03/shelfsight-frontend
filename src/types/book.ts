@@ -23,7 +23,9 @@ export interface Book {
   lastModified: string;
 }
 
-export type BookFormData = Omit<Book, "id" | "dateAdded" | "lastModified" | "shelfId">;
+export type BookFormData = Omit<Book, "id" | "dateAdded" | "lastModified" | "shelfId"> & {
+  shelfId?: string | null;
+};
 
 export type SortField =
   | "title"

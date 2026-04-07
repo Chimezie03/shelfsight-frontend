@@ -259,10 +259,10 @@ export function ShelfViewer({ open, onOpenChange, data, shelfId }: ShelfViewerPr
     async function fetchBooks() {
       setIsLoadingBooks(true);
       try {
-        const res = await apiFetch<{ success: boolean; data: BookCopyResponse[] }>(`/map/${shelfId}/books`);
+        const copies = await apiFetch<BookCopyResponse[]>(`/map/${shelfId}/books`);
         if (cancelled) return;
-        setApiTiers(transformCopiesToTiers(res.data, data.numberOfTiers, data.capacityPerTier));
-        setCopyMap(new Map(res.data.map((c) => [c.id, c])));
+        setApiTiers(transformCopiesToTiers(copies, data.numberOfTiers, data.capacityPerTier));
+        setCopyMap(new Map(copies.map((c) => [c.id, c])));
       } catch {
         if (cancelled) return;
         setApiTiers(null);

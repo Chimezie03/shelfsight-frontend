@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Dialog,
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { createBook, updateBook } from "@/lib/books";
+import { createBook, updateBook, getShelves, type ShelfOption } from "@/lib/books";
 import { ApiError } from "@/lib/api";
 import { getDeweyCategory, LANGUAGES, STATUS_OPTIONS } from "../constants";
 import type { Book, BookFormData } from "@/types/book";
@@ -45,7 +45,7 @@ interface FormValues {
   edition: string;
   language: string;
   pageCount: string;
-  location: string;
+  shelfId: string;
   copies: string;
   status: string;
   description: string;
@@ -64,7 +64,7 @@ const defaultValues: FormValues = {
   edition: "",
   language: "English",
   pageCount: "",
-  location: "",
+  shelfId: "",
   copies: "1",
   status: "available",
   description: "",
@@ -79,6 +79,16 @@ export function BookFormDialog({
   onSuccess,
 }: BookFormDialogProps) {
   const isEdit = !!book;
+  const [shelves, setShelves] = useState<ShelfOption[]>([]);
+
+  // Fetch available shelves when dialog opens
+  useEffect(() => {
+    if (open) {
+      getShelves()
+        .then(setShelves)
+        .catch(() => setShelves([]));
+    }
+  }, [open]);
 
   const {
     register,
@@ -105,7 +115,7 @@ export function BookFormDialog({
           edition: book.edition,
           language: book.language,
           pageCount: String(book.pageCount),
-          location: book.location,
+          shelfId: book.shelfId ?? "",
           copies: String(book.copies),
           status: book.status,
           description: book.description,
@@ -140,7 +150,7 @@ export function BookFormDialog({
         edition: data.edition,
         language: data.language,
         pageCount: parseInt(data.pageCount) || 0,
-        location: data.location,
+        location: shelves.find((s) => s.id === data.shelfId)?.label ?? "",
         copies: parseInt(data.copies) || 1,
         status: data.status as BookFormData["status"],
         description: data.description,
@@ -149,6 +159,7 @@ export function BookFormDialog({
           .map((s) => s.trim())
           .filter(Boolean),
         coverImageUrl: data.coverImageUrl,
+        shelfId: data.shelfId || null,
       };
 
       if (isEdit && book) {
@@ -386,15 +397,25 @@ export function BookFormDialog({
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="location" className="text-xs">
-                    Location
-                  </Label>
-                  <Input
-                    id="location"
-                    {...register("location")}
-                    className="mt-1"
-                    placeholder="Section A-1, Shelf 1"
-                  />
+                  <Label className="text-xs">Shelf Location</Label>
+                  <Select
+                    value={watch("shelfId")}
+                    onValueChange={(v) =>
+                      setValue("shelfId", v === "__none__" ? "" : v)
+                    }
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select a shelf" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">No shelf assigned</SelectItem>
+                      {shelves.map((shelf) => (
+                        <SelectItem key={shelf.id} value={shelf.id}>
+                          {shelf.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="copies" className="text-xs">

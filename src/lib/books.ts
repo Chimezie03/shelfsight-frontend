@@ -84,6 +84,18 @@ function transformBook(b: BackendBook): Book {
   };
 }
 
+// ── Shelf helpers ───────────────────────────────────────────────────
+
+export interface ShelfOption {
+  id: string;
+  label: string;
+}
+
+export async function getShelves(): Promise<ShelfOption[]> {
+  const sections = await apiFetch<Array<{ id: string; label: string }>>("/map");
+  return sections.map((s) => ({ id: s.id, label: s.label }));
+}
+
 // ── API Functions ────────────────────────────────────────────────────
 
 export async function getBooks(
@@ -141,6 +153,7 @@ export async function createBook(data: BookFormData): Promise<Book> {
       publishYear: data.publishYear ? String(data.publishYear) : undefined,
       copies: data.copies ?? 1,
       status: data.status,
+      shelfId: data.shelfId || undefined,
     },
   });
   return transformBook(b);
@@ -163,6 +176,7 @@ export async function updateBook(
       publishYear: data.publishYear != null ? String(data.publishYear) : undefined,
       pageCount: data.pageCount != null ? data.pageCount : undefined,
       copies: data.copies != null ? data.copies : undefined,
+      shelfId: data.shelfId || undefined,
     },
   });
   return transformBook(b);
