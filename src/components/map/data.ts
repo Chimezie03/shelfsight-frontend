@@ -120,7 +120,7 @@ export const SHELF_TEMPLATES: ShelfTemplate[] = [
 
 export const INITIAL_NODES: ShelfFlowNode[] = [
   {
-    id: "shelf-1",
+    id: "new-1",
     type: "shelf",
     position: { x: 60, y: 60 },
     style: { width: 260, height: 90 },
@@ -142,7 +142,7 @@ export const INITIAL_NODES: ShelfFlowNode[] = [
     },
   },
   {
-    id: "shelf-2",
+    id: "new-2",
     type: "shelf",
     position: { x: 380, y: 60 },
     style: { width: 260, height: 90 },
@@ -164,7 +164,7 @@ export const INITIAL_NODES: ShelfFlowNode[] = [
     },
   },
   {
-    id: "shelf-3",
+    id: "new-3",
     type: "shelf",
     position: { x: 60, y: 200 },
     style: { width: 300, height: 100 },
@@ -186,7 +186,7 @@ export const INITIAL_NODES: ShelfFlowNode[] = [
     },
   },
   {
-    id: "shelf-4",
+    id: "new-4",
     type: "shelf",
     position: { x: 420, y: 210 },
     style: { width: 260, height: 80 },
