@@ -62,12 +62,17 @@
 | Name | Details |
 |------|---------|
 | **Syed Hasan** | **Tasks completed:** |
-| | • |
-| **Time Spent:** hours | **Planned tasks for next week:** |
-| | • |
+| | • Completed Task 5 — implemented CI/CD pipelines (lint, build, test, typecheck) for frontend and backend using GitHub Actions |
+| | • Added smoke tests (Vitest) to support CI validation and ensure core endpoints function correctly |
+| | • Implemented baseline load testing with autocannon to measure system performance and establish initial benchmarks |
+| | • Identified scalability issues (in-memory filtering, DB readiness checks) and documented recommended fixes |
+| | • Implemented monitoring foundations — structured logging and readiness/liveness endpoints for system health visibility |
+| | • Documented CI/CD setup, load testing process, and monitoring configuration |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Support CI/CD and monitoring as additional features are integrated |
 | | **Any issues or challenges:** |
-| | • |
-
+| | • GitHub push initially blocked due to PAT permissions and repo access |
+| | • Local readiness check required Postgres (Docker not running during verification) |
 ---
 
 **Total Time Spent:** 20+ hours (other team members to be added)
