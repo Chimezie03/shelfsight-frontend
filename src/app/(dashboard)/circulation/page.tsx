@@ -82,17 +82,27 @@ export default function CirculationPage() {
     }
   };
 
-  const handlePayFine = (fineId: string) => {
-    const fine = circ.payFine(fineId);
-    if (fine) {
-      toast.success(`Fine of $${fine.amount.toFixed(2)} paid for "${fine.bookTitle}"`);
+  const handlePayFine = async (fineId: string) => {
+    try {
+      const fine = await circ.payFine(fineId);
+      if (fine) {
+        toast.success(`Fine of $${fine.amount.toFixed(2)} paid for "${fine.bookTitle}"`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not mark fine as paid";
+      toast.error(message);
     }
   };
 
-  const handleWaiveFine = (fineId: string) => {
-    const fine = circ.waiveFine(fineId);
-    if (fine) {
-      toast.success(`Fine of $${fine.amount.toFixed(2)} waived for "${fine.bookTitle}"`);
+  const handleWaiveFine = async (fineId: string) => {
+    try {
+      const fine = await circ.waiveFine(fineId);
+      if (fine) {
+        toast.success(`Fine of $${fine.amount.toFixed(2)} waived for "${fine.bookTitle}"`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not waive fine";
+      toast.error(message);
     }
   };
 
@@ -206,13 +216,18 @@ export default function CirculationPage() {
         {/* Fines */}
         <TabsContent value="fines">
           <FinesTab
-            fines={circ.filteredFines}
+            fines={circ.paginatedFines}
             filters={circ.fineFilters}
             onFiltersChange={circ.setFineFilters}
             fineSummary={circ.fineSummary}
             onPayFine={handlePayFine}
             onWaiveFine={handleWaiveFine}
             userRole={user?.role}
+            page={circ.finePage}
+            pageSize={circ.finePageSize}
+            total={circ.totalFilteredFines}
+            onPageChange={circ.setFinePage}
+            onPageSizeChange={circ.setFinePageSize}
           />
         </TabsContent>
 

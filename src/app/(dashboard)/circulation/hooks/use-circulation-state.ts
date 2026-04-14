@@ -26,7 +26,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const BOOK_SEARCH_LIMIT = 100;
 const BOOK_BROWSE_LIMIT = 50;
 const LOAN_PAGE_LIMIT = 200;
-const UI_STATE_STORAGE_KEY = "shelfsight:circ-ui:v1";
+const UI_STATE_STORAGE_KEY = "shelfsight:circ-ui:v2";
 
 /* ── Backend response types ─────────────────────────────────────────── */
 
@@ -71,6 +71,43 @@ interface BackendBook {
 
 interface BackendBooksResponse {
   data: BackendBook[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
+interface BackendFine {
+  id: string;
+  loanId: string;
+  memberId: string;
+  memberName: string;
+  memberNumber: string;
+  bookTitle: string;
+  amount: number;
+  status: 'UNPAID' | 'PAID' | 'WAIVED';
+  reason: string;
+  createdDate: string;
+  paidDate: string | null;
+  waivedBy: string | null;
+}
+
+interface BackendFinesResponse {
+  data: BackendFine[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
+interface BackendTransaction {
+  id: string;
+  type: TransactionLog['type'];
+  loanId: string | null;
+  bookTitle: string;
+  memberName: string;
+  memberNumber: string;
+  timestamp: string;
+  processedBy: string;
+  details: string;
+}
+
+interface BackendTransactionsResponse {
+  data: BackendTransaction[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
@@ -241,6 +278,10 @@ export function useCirculationState() {
   const [books, setBooks] = useState<CirculationBook[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
   const [transactionLog, setTransactionLog] = useState<TransactionLog[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [finesRefreshKey, setFinesRefreshKey] = useState(0);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -272,6 +313,8 @@ export function useCirculationState() {
 
   // ─── Fines ───────────────────────────────────────────────
   const [fineFilters, setFineFilters] = useState<FineFilters>({ status: "all", search: "" });
+  const [finePage, setFinePageRaw] = useState(1);
+  const [finePageSize, setFinePageSizeRaw] = useState(DEFAULT_PAGE_SIZE);
 
   // ─── History ─────────────────────────────────────────────
   const [historyFilters, setHistoryFilters] = useState<TransactionFilters>({
@@ -280,8 +323,9 @@ export function useCirculationState() {
     dateFrom: "",
     dateTo: "",
   });
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyPageSize, setHistoryPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [historyPage, setHistoryPageRaw] = useState(1);
+  const [historyPageSize, setHistoryPageSizeRaw] = useState(DEFAULT_PAGE_SIZE);
+  const [debouncedHistorySearch, setDebouncedHistorySearch] = useState("");
 
   // ─── Dialogs/sheets ──────────────────────────────────────
   const [detailLoan, setDetailLoan] = useState<Loan | null>(null);
@@ -297,6 +341,7 @@ export function useCirculationState() {
   const lastBooksQueryRef = useRef<string | null>(null);
   const checkinIsbnAbortRef = useRef<AbortController | null>(null);
   const checkinIsbnRequestIdRef = useRef(0);
+  const historyAbortRef = useRef<AbortController | null>(null);
   const hasHydratedUiStateRef = useRef(false);
 
   // ─── Fetch loans from API ────────────────────────────────
@@ -431,14 +476,27 @@ export function useCirculationState() {
     []
   );
 
+  // ─── Fetch fines from API (loads all for client-side filtering) ──
+  const fetchFines = useCallback(async () => {
+    try {
+      const result = await apiFetch<BackendFinesResponse>('/fines?limit=500');
+      setFines(result.data);
+    } catch (err) {
+      if (isAbortError(err)) return;
+      // silently fail — fines are non-blocking for overall page load
+    }
+  }, []);
+
   // ─── Initial data load ──────────────────────────────────
   const reloadData = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
+    setHistoryRefreshKey((k) => k + 1);
     const results = await Promise.allSettled([
       fetchLoans(),
       fetchMembers(),
       fetchBooks("", { force: true }),
+      fetchFines(),
     ]);
     const firstFailure = results.find((result) => result.status === "rejected");
     if (firstFailure && firstFailure.status === "rejected") {
@@ -448,7 +506,7 @@ export function useCirculationState() {
       setLoadError(message);
     }
     setIsLoading(false);
-  }, [fetchLoans, fetchMembers, fetchBooks]);
+  }, [fetchLoans, fetchMembers, fetchBooks, fetchFines]);
 
   useEffect(() => {
     reloadData();
@@ -465,6 +523,12 @@ export function useCirculationState() {
         activeTab?: string;
         bookSearch?: string;
         checkinSearch?: string;
+        fineFilters?: FineFilters;
+        finePage?: number;
+        finePageSize?: number;
+        historyFilters?: TransactionFilters;
+        historyPage?: number;
+        historyPageSize?: number;
       };
 
       if (typeof parsed.activeTab === "string") {
@@ -476,6 +540,24 @@ export function useCirculationState() {
       if (typeof parsed.checkinSearch === "string") {
         setCheckinSearch(parsed.checkinSearch);
       }
+      if (parsed.fineFilters && typeof parsed.fineFilters === "object") {
+        setFineFilters(parsed.fineFilters);
+      }
+      if (typeof parsed.finePage === "number") {
+        setFinePageRaw(parsed.finePage);
+      }
+      if (typeof parsed.finePageSize === "number") {
+        setFinePageSizeRaw(parsed.finePageSize);
+      }
+      if (parsed.historyFilters && typeof parsed.historyFilters === "object") {
+        setHistoryFilters(parsed.historyFilters);
+      }
+      if (typeof parsed.historyPage === "number") {
+        setHistoryPageRaw(parsed.historyPage);
+      }
+      if (typeof parsed.historyPageSize === "number") {
+        setHistoryPageSizeRaw(parsed.historyPageSize);
+      }
     } catch {
       // Ignore malformed persisted state.
     } finally {
@@ -485,9 +567,19 @@ export function useCirculationState() {
 
   useEffect(() => {
     if (!hasHydratedUiStateRef.current || typeof window === "undefined") return;
-    const payload = { activeTab, bookSearch, checkinSearch };
+    const payload = {
+      activeTab,
+      bookSearch,
+      checkinSearch,
+      fineFilters,
+      finePage,
+      finePageSize,
+      historyFilters,
+      historyPage,
+      historyPageSize,
+    };
     window.sessionStorage.setItem(UI_STATE_STORAGE_KEY, JSON.stringify(payload));
-  }, [activeTab, bookSearch, checkinSearch]);
+  }, [activeTab, bookSearch, checkinSearch, fineFilters, finePage, finePageSize, historyFilters, historyPage, historyPageSize]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -588,8 +680,78 @@ export function useCirculationState() {
       booksAbortRef.current?.abort();
       loansAbortRef.current?.abort();
       checkinIsbnAbortRef.current?.abort();
+      historyAbortRef.current?.abort();
     };
   }, []);
+
+  // ─── Fetch fines on mount and after refresh ───────────────
+  useEffect(() => {
+    void fetchFines();
+  }, [fetchFines, finesRefreshKey]);
+
+  // ─── History debounce ─────────────────────────────────────
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedHistorySearch(historyFilters.search.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [historyFilters.search]);
+
+  // ─── Fetch transactions from API (server-side pagination) ─
+  useEffect(() => {
+    historyAbortRef.current?.abort();
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+    setIsHistoryLoading(true);
+
+    const params = new URLSearchParams({
+      page: String(historyPage),
+      limit: String(historyPageSize),
+    });
+    if (historyFilters.type !== "all") params.set("type", historyFilters.type);
+    if (debouncedHistorySearch) params.set("search", debouncedHistorySearch);
+    if (historyFilters.dateFrom) params.set("dateFrom", historyFilters.dateFrom);
+    if (historyFilters.dateTo) params.set("dateTo", historyFilters.dateTo);
+
+    apiFetch<BackendTransactionsResponse>(`/transactions?${params.toString()}`, {
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        setTransactionLog(
+          res.data.map((tx) => ({
+            id: tx.id,
+            type: tx.type,
+            loanId: tx.loanId ?? "",
+            bookTitle: tx.bookTitle,
+            memberName: tx.memberName,
+            memberNumber: tx.memberNumber,
+            timestamp: tx.timestamp,
+            processedBy: tx.processedBy,
+            details: tx.details,
+          }))
+        );
+        setHistoryTotal(res.pagination.total);
+      })
+      .catch((err) => {
+        if (controller.signal.aborted || isAbortError(err)) return;
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsHistoryLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    historyPage,
+    historyPageSize,
+    historyFilters.type,
+    historyFilters.dateFrom,
+    historyFilters.dateTo,
+    debouncedHistorySearch,
+    historyRefreshKey,
+  ]);
 
   // ─── Computed: stats ─────────────────────────────────────
   const activeLoans = useMemo(
@@ -672,8 +834,8 @@ export function useCirculationState() {
     return filteredLoans.slice(start, start + loanPageSize);
   }, [filteredLoans, loanPage, loanPageSize]);
 
-  // ─── Computed: filtered fines ────────────────────────────
-  const filteredFines = useMemo(() => {
+  // ─── Computed: filtered fines (client-side from server data) ─
+  const filteredFinesAll = useMemo(() => {
     let result = [...fines];
     if (fineFilters.status !== "all") {
       result = result.filter((f) => f.status === fineFilters.status);
@@ -690,38 +852,15 @@ export function useCirculationState() {
     return result;
   }, [fines, fineFilters]);
 
-  // ─── Computed: filtered history ──────────────────────────
-  const filteredHistory = useMemo(() => {
-    let result = [...transactionLog].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    if (historyFilters.type !== "all") {
-      result = result.filter((t) => t.type === historyFilters.type);
-    }
-    if (historyFilters.search) {
-      const q = historyFilters.search.toLowerCase();
-      result = result.filter(
-        (t) =>
-          t.bookTitle.toLowerCase().includes(q) ||
-          t.memberName.toLowerCase().includes(q) ||
-          t.memberNumber.toLowerCase().includes(q) ||
-          t.details.toLowerCase().includes(q)
-      );
-    }
-    if (historyFilters.dateFrom) {
-      result = result.filter((t) => t.timestamp >= historyFilters.dateFrom);
-    }
-    if (historyFilters.dateTo) {
-      result = result.filter((t) => t.timestamp.slice(0, 10) <= historyFilters.dateTo);
-    }
-    return result;
-  }, [transactionLog, historyFilters]);
+  const totalFilteredFines = filteredFinesAll.length;
+  const paginatedFines = useMemo(() => {
+    const start = (finePage - 1) * finePageSize;
+    return filteredFinesAll.slice(start, start + finePageSize);
+  }, [filteredFinesAll, finePage, finePageSize]);
 
-  const totalFilteredHistory = filteredHistory.length;
-  const paginatedHistory = useMemo(() => {
-    const start = (historyPage - 1) * historyPageSize;
-    return filteredHistory.slice(start, start + historyPageSize);
-  }, [filteredHistory, historyPage, historyPageSize]);
+  // ─── Computed: history (server-side filtered & paginated) ─
+  const totalFilteredHistory = historyTotal;
+  const paginatedHistory = transactionLog;
 
   // ─── Fine summary stats ──────────────────────────────────
   const fineSummary = useMemo(() => {
@@ -786,22 +925,9 @@ export function useCirculationState() {
       const count = checkoutQueue.length;
       const memberName = selectedMember.name;
 
-      // Add to local transaction log
-      const newTransactions: TransactionLog[] = checkoutQueue.map((item, i) => ({
-        id: `t-new-${Date.now()}-${i}`,
-        type: "CHECKOUT" as const,
-        loanId: `pending`,
-        bookTitle: item.bookTitle,
-        memberName: selectedMember.name,
-        memberNumber: selectedMember.memberNumber,
-        timestamp: new Date().toISOString(),
-        processedBy: "Staff",
-        details: `Checked out for ${loanDays} days, due ${item.dueDate}`,
-      }));
-      setTransactionLog((prev) => [...newTransactions, ...prev]);
-
-      // Refresh loans & books from API
+      // Refresh loans, books, and transaction history from API
       await Promise.all([fetchLoans(), fetchBooks("", { force: true })]);
+      setHistoryRefreshKey((k) => k + 1);
 
       // Clear workflow
       setCheckoutQueue([]);
@@ -815,8 +941,6 @@ export function useCirculationState() {
       throw new Error(message);
     }
   }, [selectedMember, checkoutQueue, loanDays, fetchLoans, fetchBooks]);
-
-  // ─── Actions: check-in (calls real API) ──────────────────
   const searchForCheckin = useCallback(
     (query: string) => {
       setCheckinSearch(query);
@@ -839,45 +963,9 @@ export function useCirculationState() {
 
         const fine = result.fineAmount ?? 0;
 
-        // Create fine record if overdue
-        if (fine > 0) {
-          const newFine: Fine = {
-            id: `f-new-${Date.now()}`,
-            loanId: loan.id,
-            memberId: loan.memberId,
-            memberName: loan.memberName,
-            memberNumber: loan.memberNumber,
-            bookTitle: loan.bookTitle,
-            amount: fine,
-            status: "UNPAID",
-            reason: "Overdue",
-            createdDate: today,
-            paidDate: null,
-            waivedBy: null,
-          };
-          setFines((prev) => [...prev, newFine]);
-        }
-
-        // Add transaction log
-        setTransactionLog((prev) => [
-          {
-            id: `t-new-${Date.now()}`,
-            type: "CHECKIN" as const,
-            loanId: loan.id,
-            bookTitle: loan.bookTitle,
-            memberName: loan.memberName,
-            memberNumber: loan.memberNumber,
-            timestamp: new Date().toISOString(),
-            processedBy: "Staff",
-            details: fine > 0
-              ? `Returned ${getDaysOverdue(loan.dueDate)} days late, fine of $${fine.toFixed(2)} applied`
-              : "Returned on time, no fines",
-          },
-          ...prev,
-        ]);
-
-        // Refresh from API
-        await Promise.all([fetchLoans(), fetchBooks("", { force: true })]);
+        // Refresh loans, books, fines, and transaction history from API
+        await Promise.all([fetchLoans(), fetchBooks("", { force: true }), fetchFines()]);
+        setHistoryRefreshKey((k) => k + 1);
 
         // Clear check-in state
         setDetectedLoan(null);
@@ -891,7 +979,7 @@ export function useCirculationState() {
         throw new Error(message);
       }
     },
-    [today, fetchLoans, fetchBooks]
+    [fetchLoans, fetchBooks, fetchFines]
   );
 
   // ─── Actions: renew ──────────────────────────────────────
@@ -915,21 +1003,6 @@ export function useCirculationState() {
         )
       );
 
-      setTransactionLog((prev) => [
-        {
-          id: `t-new-${Date.now()}`,
-          type: "RENEWAL" as const,
-          loanId: loan.id,
-          bookTitle: loan.bookTitle,
-          memberName: loan.memberName,
-          memberNumber: loan.memberNumber,
-          timestamp: new Date().toISOString(),
-          processedBy: "Staff",
-          details: `Renewed for ${loanDays} days, new due date ${newDueDateStr} (renewal ${loan.renewalCount + 1} of ${loan.maxRenewals})`,
-        },
-        ...prev,
-      ]);
-
       setIsRenewOpen(false);
       setRenewLoan(null);
 
@@ -939,53 +1012,19 @@ export function useCirculationState() {
   );
 
   // ─── Actions: fines ──────────────────────────────────────
-  const payFine = useCallback((fineId: string) => {
-    setFines((prev) =>
-      prev.map((f) => (f.id === fineId ? { ...f, status: "PAID" as const, paidDate: today } : f))
-    );
-    const fine = fines.find((f) => f.id === fineId);
-    if (fine) {
-      setTransactionLog((prev) => [
-        {
-          id: `t-new-${Date.now()}`,
-          type: "FINE_PAID" as const,
-          loanId: fine.loanId,
-          bookTitle: fine.bookTitle,
-          memberName: fine.memberName,
-          memberNumber: fine.memberNumber,
-          timestamp: new Date().toISOString(),
-          processedBy: "Staff",
-          details: `Fine of $${fine.amount.toFixed(2)} paid`,
-        },
-        ...prev,
-      ]);
-    }
+  const payFine = useCallback(async (fineId: string) => {
+    const fine = await apiFetch<BackendFine>(`/fines/${fineId}/pay`, { method: 'POST' });
+    setFinesRefreshKey((k) => k + 1);
+    setHistoryRefreshKey((k) => k + 1);
     return fine;
-  }, [fines, today]);
+  }, []);
 
-  const waiveFine = useCallback((fineId: string) => {
-    setFines((prev) =>
-      prev.map((f) => (f.id === fineId ? { ...f, status: "WAIVED" as const, waivedBy: "Staff" } : f))
-    );
-    const fine = fines.find((f) => f.id === fineId);
-    if (fine) {
-      setTransactionLog((prev) => [
-        {
-          id: `t-new-${Date.now()}`,
-          type: "FINE_WAIVED" as const,
-          loanId: fine.loanId,
-          bookTitle: fine.bookTitle,
-          memberName: fine.memberName,
-          memberNumber: fine.memberNumber,
-          timestamp: new Date().toISOString(),
-          processedBy: "Staff",
-          details: `Fine of $${fine.amount.toFixed(2)} waived`,
-        },
-        ...prev,
-      ]);
-    }
+  const waiveFine = useCallback(async (fineId: string) => {
+    const fine = await apiFetch<BackendFine>(`/fines/${fineId}/waive`, { method: 'POST' });
+    setFinesRefreshKey((k) => k + 1);
+    setHistoryRefreshKey((k) => k + 1);
     return fine;
-  }, [fines]);
+  }, []);
 
   // ─── Actions: loan table sort ────────────────────────────
   const toggleLoanSort = useCallback(
@@ -1023,9 +1062,24 @@ export function useCirculationState() {
     setLoanPage(1);
   }, []);
 
+  const handleFineFiltersChange = useCallback((filters: FineFilters) => {
+    setFineFilters(filters);
+    setFinePageRaw(1);
+  }, []);
+
+  const handleFinePageSizeChange = useCallback((size: number) => {
+    setFinePageSizeRaw(size);
+    setFinePageRaw(1);
+  }, []);
+
+  const handleHistoryFiltersChange = useCallback((filters: TransactionFilters) => {
+    setHistoryFilters(filters);
+    setHistoryPageRaw(1);
+  }, []);
+
   const handleHistoryPageSizeChange = useCallback((size: number) => {
-    setHistoryPageSize(size);
-    setHistoryPage(1);
+    setHistoryPageSizeRaw(size);
+    setHistoryPageRaw(1);
   }, []);
 
   const isBookSearchPending = debouncedBookSearch !== bookSearch.trim();
@@ -1098,19 +1152,25 @@ export function useCirculationState() {
 
     // Fines
     fineFilters,
-    setFineFilters,
-    filteredFines,
+    setFineFilters: handleFineFiltersChange,
+    paginatedFines,
+    totalFilteredFines,
+    finePage,
+    setFinePage: setFinePageRaw,
+    finePageSize,
+    setFinePageSize: handleFinePageSizeChange,
     fineSummary,
     payFine,
     waiveFine,
 
     // History
     historyFilters,
-    setHistoryFilters,
+    setHistoryFilters: handleHistoryFiltersChange,
     paginatedHistory,
     totalFilteredHistory,
+    isHistoryLoading,
     historyPage,
-    setHistoryPage,
+    setHistoryPage: setHistoryPageRaw,
     historyPageSize,
     setHistoryPageSize: handleHistoryPageSizeChange,
 

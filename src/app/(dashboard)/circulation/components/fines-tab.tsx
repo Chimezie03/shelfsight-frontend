@@ -20,6 +20,7 @@ import {
 import { Search, DollarSign, CheckCircle, XCircle, Ban } from "lucide-react";
 import type { Fine, FineFilters } from "@/types/circulation";
 import { FINE_STATUS_OPTIONS } from "../constants";
+import { CirculationPagination } from "./circulation-pagination";
 
 interface FinesTabProps {
   fines: Fine[];
@@ -29,6 +30,11 @@ interface FinesTabProps {
   onPayFine: (fineId: string) => void;
   onWaiveFine: (fineId: string) => void;
   userRole?: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
 function getStatusBadge(status: Fine["status"]) {
@@ -62,6 +68,11 @@ export function FinesTab({
   onPayFine,
   onWaiveFine,
   userRole,
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  onPageSizeChange,
 }: FinesTabProps) {
   return (
     <div className="space-y-6">
@@ -281,6 +292,13 @@ export function FinesTab({
               )}
             </TableBody>
           </Table>
+          <CirculationPagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         </CardContent>
       </Card>
     </div>
