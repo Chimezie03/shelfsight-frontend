@@ -5,7 +5,11 @@
  * JWT cookie is automatically sent with every request.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Default to /api so all requests go through the Next.js reverse proxy
+// (see next.config.ts rewrites). Set NEXT_PUBLIC_API_URL only when you
+// need to bypass the proxy and call the backend directly (e.g. during
+// local development without the proxy: NEXT_PUBLIC_API_URL=http://localhost:3001).
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
 type UnknownRecord = Record<string, unknown>;
 
