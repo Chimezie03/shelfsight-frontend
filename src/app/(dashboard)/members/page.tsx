@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
@@ -9,6 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -24,7 +32,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Loader2, Mail, Search, UserRound, BookOpen, AlertTriangle } from "lucide-react";
+import { Loader2, Mail, Search, UserRound, BookOpen, AlertTriangle, Plus, Pencil } from "lucide-react";
 
 type UserRole = "ADMIN" | "STAFF" | "PATRON";
 
@@ -136,25 +144,50 @@ export default function MembersPage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
 
-  useEffect(() => {
-    async function loadUsers() {
-      setIsUsersLoading(true);
-      try {
-        const data = await apiFetch<UserSummary[]>("/users");
-        setUsers(data);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 403) {
-          toast.error("Admin access required to view members.");
-        } else {
-          toast.error("Failed to load members.");
-        }
-      } finally {
-        setIsUsersLoading(false);
-      }
-    }
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [createRole, setCreateRole] = useState<UserRole>("PATRON");
+  const [isCreateSaving, setIsCreateSaving] = useState(false);
 
-    loadUsers();
+  const [isEditingMember, setIsEditingMember] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<UserRole>("PATRON");
+  const [editPassword, setEditPassword] = useState("");
+  const [isEditSaving, setIsEditSaving] = useState(false);
+
+  const loadUsers = useCallback(async () => {
+    setIsUsersLoading(true);
+    try {
+      const data = await apiFetch<UserSummary[]>("/users");
+      setUsers(data);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        toast.error("Admin access required to view members.");
+      } else {
+        toast.error("Failed to load members.");
+      }
+    } finally {
+      setIsUsersLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  useEffect(() => {
+    if (selectedUser && isProfileOpen) {
+      setEditName(selectedUser.name);
+      setEditEmail(selectedUser.email);
+      setEditRole(selectedUser.role);
+      setEditPassword("");
+      setIsEditingMember(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset edit form when member id or sheet visibility changes
+  }, [selectedUser?.id, isProfileOpen]);
 
   const filteredUsers = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -199,6 +232,83 @@ export default function MembersPage() {
       setSelectedUserLoans([]);
     } finally {
       setIsProfileLoading(false);
+    }
+  };
+
+  const handleCreateMember = async () => {
+    if (!createName.trim() || !createEmail.trim() || !createPassword) {
+      toast.error("Name, email, and password are required.");
+      return;
+    }
+    setIsCreateSaving(true);
+    try {
+      await apiFetch("/users", {
+        method: "POST",
+        body: {
+          name: createName.trim(),
+          email: createEmail,
+          password: createPassword,
+          role: createRole,
+        },
+      });
+      toast.success("Member created.");
+      setCreateSheetOpen(false);
+      setCreateName("");
+      setCreateEmail("");
+      setCreatePassword("");
+      setCreateRole("PATRON");
+      await loadUsers();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 409) {
+          toast.error("A member with this email already exists.");
+        } else {
+          toast.error(error.message || "Could not create member.");
+        }
+      } else {
+        toast.error("Could not create member.");
+      }
+    } finally {
+      setIsCreateSaving(false);
+    }
+  };
+
+  const handleSaveMemberEdit = async () => {
+    if (!selectedUser) return;
+    if (!editName.trim() || !editEmail.trim()) {
+      toast.error("Name and email are required.");
+      return;
+    }
+    setIsEditSaving(true);
+    try {
+      const body: Record<string, unknown> = {
+        name: editName.trim(),
+        email: editEmail,
+        role: editRole,
+      };
+      if (editPassword.trim()) {
+        body.password = editPassword;
+      }
+      const updated = await apiFetch<UserSummary>(`/users/${selectedUser.id}`, {
+        method: "PUT",
+        body,
+      });
+      toast.success("Member updated.");
+      setSelectedUser(updated);
+      setIsEditingMember(false);
+      await loadUsers();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 409) {
+          toast.error("A member with this email already exists.");
+        } else {
+          toast.error(error.message || "Could not update member.");
+        }
+      } else {
+        toast.error("Could not update member.");
+      }
+    } finally {
+      setIsEditSaving(false);
     }
   };
 
@@ -301,8 +411,17 @@ export default function MembersPage() {
       </Card>
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex flex-row flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-base font-display">Members List ({filteredUsers.length})</CardTitle>
+          <Button
+            type="button"
+            size="sm"
+            className="text-xs gap-1"
+            onClick={() => setCreateSheetOpen(true)}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add member
+          </Button>
         </CardHeader>
         <CardContent>
           {isUsersLoading ? (
@@ -376,10 +495,34 @@ export default function MembersPage() {
       >
         <SheetContent className="sm:max-w-xl p-0">
           <SheetHeader className="px-6 pt-6 pb-4 border-b">
-            <SheetTitle className="font-display text-lg">Member Profile</SheetTitle>
-            <SheetDescription>
-              {selectedUser ? `${selectedUser.name} - ${roleLabel(selectedUser.role)}` : "Member details"}
-            </SheetDescription>
+            <div className="flex items-start justify-between gap-3 pr-10">
+              <div className="space-y-1">
+                <SheetTitle className="font-display text-lg">Member Profile</SheetTitle>
+                <SheetDescription>
+                  {selectedUser ? `${selectedUser.name} - ${roleLabel(selectedUser.role)}` : "Member details"}
+                </SheetDescription>
+              </div>
+              {selectedUser && !isProfileLoading ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 text-xs gap-1"
+                  onClick={() => {
+                    if (isEditingMember && selectedUser) {
+                      setEditName(selectedUser.name);
+                      setEditEmail(selectedUser.email);
+                      setEditRole(selectedUser.role);
+                      setEditPassword("");
+                    }
+                    setIsEditingMember((v) => !v);
+                  }}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  {isEditingMember ? "Cancel" : "Edit"}
+                </Button>
+              ) : null}
+            </div>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
@@ -396,18 +539,93 @@ export default function MembersPage() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-display">User Information</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <UserRound className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedUser.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Mail className="w-4 h-4" />
-                      <span>{selectedUser.email}</span>
-                    </div>
-                    <div className="pt-1">
-                      <RoleBadge role={selectedUser.role} />
-                    </div>
+                  <CardContent className="space-y-3">
+                    {isEditingMember ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="edit-name" className="text-xs">
+                            Name
+                          </Label>
+                          <Input
+                            id="edit-name"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            autoComplete="name"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="edit-email" className="text-xs">
+                            Email
+                          </Label>
+                          <Input
+                            id="edit-email"
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            autoComplete="email"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Role</Label>
+                          <Select
+                            value={editRole}
+                            onValueChange={(v) => setEditRole(v as UserRole)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
+                              <SelectItem value="STAFF">Staff</SelectItem>
+                              <SelectItem value="PATRON">Patron</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="edit-password" className="text-xs">
+                            New password (optional)
+                          </Label>
+                          <Input
+                            id="edit-password"
+                            type="password"
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                            autoComplete="new-password"
+                            placeholder="Leave blank to keep current"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full"
+                          disabled={isEditSaving}
+                          onClick={() => void handleSaveMemberEdit()}
+                        >
+                          {isEditSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Saving…
+                            </>
+                          ) : (
+                            "Save changes"
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 text-sm">
+                          <UserRound className="w-4 h-4 text-muted-foreground" />
+                          <span>{selectedUser.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Mail className="w-4 h-4" />
+                          <span>{selectedUser.email}</span>
+                        </div>
+                        <div className="pt-1">
+                          <RoleBadge role={selectedUser.role} />
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -474,6 +692,91 @@ export default function MembersPage() {
                 </Card>
               </>
             )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={createSheetOpen}
+        onOpenChange={(open) => {
+          setCreateSheetOpen(open);
+          if (!open) {
+            setCreateName("");
+            setCreateEmail("");
+            setCreatePassword("");
+            setCreateRole("PATRON");
+          }
+        }}
+      >
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="font-display">Add member</SheetTitle>
+            <SheetDescription>Create an account with name, email, password, and role.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-3 px-1 py-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="create-name" className="text-xs">
+                Name
+              </Label>
+              <Input
+                id="create-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                autoComplete="name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-email" className="text-xs">
+                Email
+              </Label>
+              <Input
+                id="create-email"
+                type="email"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-password" className="text-xs">
+                Password
+              </Label>
+              <Input
+                id="create-password"
+                type="password"
+                value={createPassword}
+                onChange={(e) => setCreatePassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Role</Label>
+              <Select value={createRole} onValueChange={(v) => setCreateRole(v as UserRole)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="STAFF">Staff</SelectItem>
+                  <SelectItem value="PATRON">Patron</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={isCreateSaving}
+              onClick={() => void handleCreateMember()}
+            >
+              {isCreateSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating…
+                </>
+              ) : (
+                "Create member"
+              )}
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
