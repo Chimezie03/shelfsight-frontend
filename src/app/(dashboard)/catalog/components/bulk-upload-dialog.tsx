@@ -45,18 +45,18 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     formData.append("file", file);
 
     try {
-      const data: any = await apiFetch("/books/bulk-file", {
+      const data = await apiFetch("/books/bulk-file", {
         method: "POST",
         body: formData,
-      });
+      }) as { successful?: number; failed?: number };
 
       setResult({
         successful: data.successful || 0,
         failed: data.failed || 0,
       });
       onSuccess();
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred during upload.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred during upload.");
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
         <div className="grid gap-4 py-4">
           <p className="text-sm text-muted-foreground">
-            Upload an Excel (.xlsx) or CSV file containing book data. The file must include columns like "title", "author", and "isbn".
+            Upload an Excel (.xlsx) or CSV file containing book data. The file must include columns like &quot;title&quot;, &quot;author&quot;, and &quot;isbn&quot;.
           </p>
 
           <div className="flex flex-col gap-2">
