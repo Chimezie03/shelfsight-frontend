@@ -43,23 +43,39 @@
 
 | Name | Details |
 |------|---------|
-| **Syed Hasan** | **Tasks completed:** |
-| | • To be added later |
-| **Time Spent:** 0 hours | **Planned tasks for next week:** |
-| | • To be added later |
+| **Syed Hasan** | **Tasks completed (Task 5 – CI/CD, Documentation & Release Readiness):** |
+| | • Led final release readiness efforts by consolidating CI/CD, deployment workflows, environment setup, and verification processes into a single launch-ready document. |
+| | • Authored the **CI/CD, Release Readiness & Verification Report**, integrating outputs from Task 3 (k6 load testing), Task 4 (E2E testing + bug fixes), and Task 5 (scalability optimizations) into a cohesive, manager-facing document. |
+| | • Documented complete **deployment flow**, including environment configuration (Docker Postgres, backend, frontend), local and CI build steps, and validation procedures. |
+| | • Defined and formalized **pre-release smoke test checklist**, ensuring all core product workflows (auth, catalog, circulation, ingestion, RBAC) are validated before launch. |
+| | • Established **rollback plan and failure response strategy**, including trigger conditions (auth failures, 5xx errors, broken workflows) and recovery steps. |
+| | • Consolidated and documented **known system limitations**, including ingestion constraints (no AWS/OpenAI live validation), partial endpoint availability, and dataset scaling gaps. |
+| | • Ensured all team contributions (Tasks 1–5) were captured, standardized, and aligned into a **single presentation-ready technical document** for final delivery. |
+| **Time Spent:** 10 hours | **Planned tasks for next week:** |
+| | • Execute final smoke validation on production-like environment |
+| | • Support presentation walkthrough and technical explanation of CI/CD and system readiness |
 | | **Any issues or challenges:** |
-| | • None reported yet |
+| | • Coordinating multiple task outputs (testing, scalability, ingestion, CI) into a single consistent document required aligning formats, terminology, and verification evidence across contributors |
 
 ---
 
 | Name | Details |
 |------|---------|
-| **Kaelen Raible** | **Tasks completed:** |
-| | • To be added later |
-| **Time Spent:** 0 hours | **Planned tasks for next week:** |
-| | • To be added later |
+| **Kaelen Raible** | **Tasks completed (Task 5 – Scalability & Query Optimization):** |
+| | • Added GIN trigram indexes (`pg_trgm`) on text search columns and B-tree indexes on `Book.genre` / `ShelfSection.floor` via a new Prisma migration. |
+| | • Pushed book status filter from in-memory JS into a Prisma SQL `WHERE` clause; removed over-fetching on `/auth/me` (dropped loans join). |
+| | • Added server-side pagination to `GET /users` (max 100) and updated all frontend call sites to the new `{ data, pagination }` shape. |
+| | • Enforced `MAX_LIMIT=100` with enum allowlists across all paginated controllers (books, loans, fines, transactions). |
+| | • Added `express-rate-limit` (global: 300 req/15 min; auth: 15 req/15 min), gated to production only. |
+| | • Eliminated the on-mount `limit=9999` catalog fetch; export is now on-demand. Reduced dashboard/reports limits from 500–2000 to 100. |
+| | • Replaced sequential loans pagination loop with `Promise.all`; converted fines tab to server-side filtering. |
+| | • Added optional `?floor=N` filter and 500-row cap to `GET /map`. |
+| | • Documented all changes in `docs/task5/SCALABILITY.md`. |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Deploy migration and re-run k6 suite to compare p95 latencies against Task 3 baseline. |
 | | **Any issues or challenges:** |
-| | • None reported yet |
+| | • Local Docker DB was not running; migration validated via schema checks only, pending deployment. |
+| | • Rate limiter caused 100% k6 failures until gated behind `NODE_ENV === 'production'`. |
 
 ---
 
@@ -74,7 +90,7 @@
 
 ---
 
-**Total Time Spent:** 20 hours
+**Total Time Spent:** 52 hours
 
 **Summary:**
-Week 10 focused primarily on the introduction of bulk upload capabilities and massive data population scaling protocols. Marc implemented a high-volume data ingestion pipeline that parses uploaded Excel/.csv workbooks into the backend database with built-in upsert redundancy. This was validated alongside an offline data population script using Faker representation capable of rapidly seeding 100,000+ randomized records directly into Postgres, which effectively hardens our database indexes, searching components, and circulation checkouts. Mirza closed out Task 4 by standing up the project's first Playwright E2E suite (30 passing, 0 failing) and shipping fixes for the three remaining critical bugs (KAN-57, KAN-59, KAN-60), while verifying the teammate-delivered fixes for KAN-55/56/58/61 with automated regression specs — all seven Task 4 Jira tickets are now closed, with a detailed testing report and results log staged for Task 5's launch documentation. Team summary sections for Syed, Kaelen, and Chimezie will be detailed later.
+Week 10 focused on transitioning ShelfSight into a fully release-ready, end-to-end system by combining large-scale data ingestion, comprehensive workflow validation, performance testing, and deployment readiness. Bulk upload functionality was introduced to support CSV/XLSX imports with validation and upsert handling, alongside a Faker-based seeding script capable of generating 100,000+ records for realistic stress testing. A complete end-to-end testing suite was implemented covering authentication, catalog, circulation, ingestion, RBAC, and search, achieving 30 passing tests with 0 failures and resolving all remaining critical bugs while verifying previously fixed issues. System scalability was strengthened through database indexing, pagination enforcement, rate limiting, and query optimizations, reducing over-fetching and improving backend efficiency. Load testing validated stability under 45 concurrent users and 9,000+ requests with a 0% failure rate, confirming reliability across core workflows. All results were consolidated into a comprehensive CI/CD and release readiness document, including environment setup, deployment steps, smoke tests, rollback planning, and known limitations, resulting in a polished, manager-ready deliverable that positions ShelfSight as a validated pre-launch candidate ready for presentation.
