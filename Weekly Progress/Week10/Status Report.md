@@ -82,15 +82,19 @@
 | Name | Details |
 |------|---------|
 | **Chimezie Nnawuihe** | **Tasks completed:** |
-| | • To be added later |
-| **Time Spent:** 0 hours | **Planned tasks for next week:** |
-| | • To be added later |
+| | • Completed k6 load-testing suite covering concurrent auth, catalog search, circulation, and ingestion workflows. |
+| | • Executed smoke and multi-user runs, generated result summaries, and validated threshold pass status. |
+| | • Improved test accuracy by handling expected circulation contention as expected responses while preserving contention counters. |
+| | • Completed documentation of Task 3 testing approach, execution results, and performance findings. |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Multi-Organization / Multi-Tenancy Support |
+| | • Expand load testing and compare new results against the current baseline to identify any degradation trends |
 | | **Any issues or challenges:** |
-| | • None reported yet |
+| | • Concurrent checkout/checkin activity caused expected request conflicts, so results required careful interpretation to ensure valid conflicts were not misclassified as failures. |
 
 ---
 
-**Total Time Spent:** 52 hours
+**Total Time Spent:** 54 hours
 
 **Summary:**
 Week 10 focused on transitioning ShelfSight into a fully release-ready, end-to-end system by combining large-scale data ingestion, comprehensive workflow validation, performance testing, and deployment readiness. Bulk upload functionality was introduced to support CSV/XLSX imports with validation and upsert handling, alongside a Faker-based seeding script capable of generating 100,000+ records for realistic stress testing. A complete end-to-end testing suite was implemented covering authentication, catalog, circulation, ingestion, RBAC, and search, achieving 30 passing tests with 0 failures and resolving all remaining critical bugs while verifying previously fixed issues. System scalability was strengthened through database indexing, pagination enforcement, rate limiting, and query optimizations, reducing over-fetching and improving backend efficiency. Load testing validated stability under 45 concurrent users and 9,000+ requests with a 0% failure rate, confirming reliability across core workflows. All results were consolidated into a comprehensive CI/CD and release readiness document, including environment setup, deployment steps, smoke tests, rollback planning, and known limitations, resulting in a polished, manager-ready deliverable that positions ShelfSight as a validated pre-launch candidate ready for presentation.
