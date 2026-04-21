@@ -61,12 +61,13 @@ export default function CatalogPage() {
     setIsBulkDeleteOpen(true);
   };
 
-  const handleExport = () => {
-    exportBooksCsv(catalog.allBooks);
+  const handleExport = async () => {
+    const books = await catalog.exportAllBooks();
+    exportBooksCsv(books);
   };
 
   const handleExportSelected = () => {
-    const selected = catalog.allBooks.filter((b) =>
+    const selected = catalog.books.filter((b) =>
       catalog.selectedIds.has(b.id)
     );
     exportBooksCsv(selected);
@@ -85,7 +86,7 @@ export default function CatalogPage() {
       </div>
 
       {/* Stats */}
-      <CatalogStats books={catalog.allBooks} isLoading={catalog.isLoading} />
+      <CatalogStats books={catalog.books} isLoading={catalog.isLoading} total={catalog.total} />
 
       {/* Toolbar */}
       <CatalogToolbar

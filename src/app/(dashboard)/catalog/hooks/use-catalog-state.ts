@@ -26,7 +26,6 @@ const DEFAULT_FILTERS: CatalogFilters = {
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
-const FULL_CATALOG_PAGE_SIZE = 9999;
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -35,7 +34,6 @@ function isAbortError(error: unknown): boolean {
 export function useCatalogState() {
   // Data
   const [books, setBooks] = useState<Book[]>([]);
-  const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +63,6 @@ export function useCatalogState() {
   // Request control
   const booksAbortRef = useRef<AbortController | null>(null);
   const booksRequestIdRef = useRef(0);
-  const allBooksAbortRef = useRef<AbortController | null>(null);
-  const allBooksRequestIdRef = useRef(0);
   const lastQueryKeyRef = useRef<string>("");
 
   // Debounced search
@@ -133,7 +129,6 @@ export function useCatalogState() {
 
       setBooks(result.books);
       setTotal(result.total);
-      setAllBooks((prev) => (prev.length > 0 ? prev : result.books));
     } catch (err) {
       if (controller.signal.aborted || isAbortError(err)) {
         return;
@@ -155,33 +150,23 @@ export function useCatalogState() {
     }
   }, [debouncedSearch, filters, sortField, sortDirection, page, pageSize]);
 
-  const fetchAllBooks = useCallback(async () => {
-    const requestId = ++allBooksRequestIdRef.current;
-
-    allBooksAbortRef.current?.abort();
-    const controller = new AbortController();
-    allBooksAbortRef.current = controller;
-
-    try {
-      const result = await getBooks(
-        { page: 1, pageSize: FULL_CATALOG_PAGE_SIZE },
-        controller.signal
-      );
-
-      if (requestId !== allBooksRequestIdRef.current) {
-        return;
-      }
-
-      setAllBooks(result.books);
-    } catch (err) {
-      if (controller.signal.aborted || isAbortError(err)) {
-        return;
-      }
-
-      // Keep the previous stats if this optional call fails.
-      return;
-    }
-  }, []);
+  /** Fetch all books matching current filters for CSV export (on-demand). */
+  const exportAllBooks = useCallback(async () => {
+    const params: BookQueryParams = {
+      search: debouncedSearch || undefined,
+      category: filters.category !== "all" ? filters.category : undefined,
+      status: filters.status !== "all" ? filters.status : undefined,
+      language: filters.language !== "all" ? filters.language : undefined,
+      yearMin: filters.yearMin ? parseInt(filters.yearMin, 10) : undefined,
+      yearMax: filters.yearMax ? parseInt(filters.yearMax, 10) : undefined,
+      sortBy: sortField ?? undefined,
+      sortDir: sortField ? sortDirection : undefined,
+      page: 1,
+      pageSize: 500,
+    };
+    const result = await getBooks(params);
+    return result.books;
+  }, [debouncedSearch, filters, sortField, sortDirection]);
 
   const queryKey = useMemo(
     () =>
@@ -211,13 +196,8 @@ export function useCatalogState() {
   }, [fetchPageBooks, page, queryKey]);
 
   useEffect(() => {
-    void fetchAllBooks();
-  }, [fetchAllBooks]);
-
-  useEffect(() => {
     return () => {
       booksAbortRef.current?.abort();
-      allBooksAbortRef.current?.abort();
     };
   }, []);
 
@@ -294,13 +274,12 @@ export function useCatalogState() {
   };
 
   const refreshBooks = useCallback(async () => {
-    await Promise.all([fetchPageBooks(), fetchAllBooks()]);
-  }, [fetchPageBooks, fetchAllBooks]);
+    await fetchPageBooks();
+  }, [fetchPageBooks]);
 
   return {
     // Data
     books,
-    allBooks,
     total,
     isLoading,
     error,
@@ -340,5 +319,6 @@ export function useCatalogState() {
 
     // Refresh
     refreshBooks,
+    exportAllBooks,
   };
 }

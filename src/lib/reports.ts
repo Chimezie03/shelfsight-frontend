@@ -339,13 +339,14 @@ function makeRecentFineTransactions(
 }
 
 export async function fetchReportsData(range: DateRange): Promise<ReportsData> {
-  const [booksRes, users, loansRes] = await Promise.all([
-    apiFetch<BackendBooksResponse>("/books?limit=2000"),
-    apiFetch<BackendUser[]>("/users"),
-    apiFetch<BackendLoansResponse>("/loans?limit=2000"),
+  const [booksRes, usersRes, loansRes] = await Promise.all([
+    apiFetch<BackendBooksResponse>("/books?limit=100"),
+    apiFetch<{ data: BackendUser[]; pagination: { total: number } }>("/users?limit=100"),
+    apiFetch<BackendLoansResponse>("/loans?limit=100"),
   ]);
 
   const books = booksRes.data;
+  const users = usersRes.data;
   const loans = loansRes.data;
   const now = new Date();
   const prevRange = previousRange(range);

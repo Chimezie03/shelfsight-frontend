@@ -493,22 +493,22 @@ export interface AdminFetchResult {
 export async function fetchAdminDashboard(
   circulationRange: CirculationRangePreset,
 ): Promise<AdminFetchResult> {
-  const [booksRes, users, activeRes, overdueRes, recentRes, allBooksRes] = await Promise.all([
-    apiFetch<BackendBooksResponse>("/books?limit=1"),
-    apiFetch<BackendUser[]>("/users"),
-    apiFetch<BackendLoansResponse>("/loans?status=active&limit=1"),
-    apiFetch<BackendLoansResponse>("/loans?status=overdue&limit=100"),
-    apiFetch<BackendLoansResponse>("/loans?limit=7"),
-    apiFetch<BackendBooksResponse>("/books?limit=1000"),
-  ]);
+  const [booksRes, usersRes, activeRes, overdueRes, recentRes, allBooksRes, allActiveRes, allReturnedRes] =
+    await Promise.all([
+      apiFetch<BackendBooksResponse>("/books?limit=1"),
+      apiFetch<{ data: BackendUser[]; pagination: { total: number } }>("/users?limit=1"),
+      apiFetch<BackendLoansResponse>("/loans?status=active&limit=1"),
+      apiFetch<BackendLoansResponse>("/loans?status=overdue&limit=100"),
+      apiFetch<BackendLoansResponse>("/loans?limit=7"),
+      apiFetch<BackendBooksResponse>("/books?limit=100"),
+      apiFetch<BackendLoansResponse>("/loans?status=active&limit=100"),
+      apiFetch<BackendLoansResponse>("/loans?status=returned&limit=100"),
+    ]);
 
-  // Fetch all active loans for trends + popular books
-  const allActiveRes = await apiFetch<BackendLoansResponse>("/loans?status=active&limit=500");
-  const allReturnedRes = await apiFetch<BackendLoansResponse>("/loans?status=returned&limit=500");
   const allLoans = [...allActiveRes.data, ...allReturnedRes.data];
 
   const totalBooks = booksRes.pagination.total;
-  const memberCount = users.length;
+  const memberCount = usersRes.pagination.total;
   const activeCount = activeRes.pagination.total;
   const overdueCount = overdueRes.pagination.total;
   const overdueFinesTotal = Math.round(

@@ -277,10 +277,12 @@ export function useCirculationState() {
   const [members, setMembers] = useState<CirculationMember[]>([]);
   const [books, setBooks] = useState<CirculationBook[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
+  const [finesTotal, setFinesTotal] = useState(0);
   const [transactionLog, setTransactionLog] = useState<TransactionLog[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [finesRefreshKey, setFinesRefreshKey] = useState(0);
+  const [debouncedFineSearch, setDebouncedFineSearch] = useState("");
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -353,19 +355,30 @@ export function useCirculationState() {
     loansAbortRef.current = controller;
 
     try {
-      const allLoans: BackendLoan[] = [];
-      let page = 1;
-      let totalPages = 1;
+      // Fetch page 1 to learn totalPages, then fetch remaining pages in parallel.
+      const firstResult = await apiFetch<BackendLoansResponse>(
+        `/loans?status=active&page=1&limit=${LOAN_PAGE_LIMIT}`,
+        { signal: controller.signal }
+      );
 
-      do {
-        const result = await apiFetch<BackendLoansResponse>(
-          `/loans?status=active&page=${page}&limit=${LOAN_PAGE_LIMIT}`,
-          { signal: controller.signal }
+      const totalPages = Math.max(1, firstResult.pagination.totalPages || 1);
+
+      let allLoans: BackendLoan[] = [...firstResult.data];
+
+      if (totalPages > 1) {
+        const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+        const remainingResults = await Promise.all(
+          remainingPages.map((page) =>
+            apiFetch<BackendLoansResponse>(
+              `/loans?status=active&page=${page}&limit=${LOAN_PAGE_LIMIT}`,
+              { signal: controller.signal }
+            )
+          )
         );
-        allLoans.push(...result.data);
-        totalPages = Math.max(1, result.pagination.totalPages || 1);
-        page += 1;
-      } while (page <= totalPages);
+        for (const result of remainingResults) {
+          allLoans = allLoans.concat(result.data);
+        }
+      }
 
       if (controller.signal.aborted || requestId !== loansRequestIdRef.current) {
         return;
@@ -383,8 +396,8 @@ export function useCirculationState() {
   // ─── Fetch members from API ──────────────────────────────
   const fetchMembers = useCallback(async () => {
     try {
-      const users = await apiFetch<BackendUser[]>("/users");
-      setMembers(users.map(backendUserToMember));
+      const usersRes = await apiFetch<{ data: BackendUser[] }>("/users?limit=100");
+      setMembers(usersRes.data.map(backendUserToMember));
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         const loansRes = await apiFetch<BackendLoansResponse>("/loans?limit=500");
@@ -476,16 +489,23 @@ export function useCirculationState() {
     []
   );
 
-  // ─── Fetch fines from API (loads all for client-side filtering) ──
+  // ─── Fetch fines from API (server-side filtered & paginated) ───
   const fetchFines = useCallback(async () => {
     try {
-      const result = await apiFetch<BackendFinesResponse>('/fines?limit=500');
+      const params = new URLSearchParams({
+        page: String(finePage),
+        limit: String(finePageSize),
+      });
+      if (fineFilters.status !== "all") params.set("status", fineFilters.status);
+      if (debouncedFineSearch) params.set("search", debouncedFineSearch);
+      const result = await apiFetch<BackendFinesResponse>(`/fines?${params.toString()}`);
       setFines(result.data);
+      setFinesTotal(result.pagination.total);
     } catch (err) {
       if (isAbortError(err)) return;
       // silently fail — fines are non-blocking for overall page load
     }
-  }, []);
+  }, [finePage, finePageSize, fineFilters.status, debouncedFineSearch]);
 
   // ─── Initial data load ──────────────────────────────────
   const reloadData = useCallback(async () => {
@@ -684,7 +704,16 @@ export function useCirculationState() {
     };
   }, []);
 
-  // ─── Fetch fines on mount and after refresh ───────────────
+  // ─── Fine search debounce ────────────────────────────────
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedFineSearch(fineFilters.search.trim());
+      setFinePageRaw(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [fineFilters.search]);
+
+  // ─── Fetch fines on mount, filter change, or after refresh ─
   useEffect(() => {
     void fetchFines();
   }, [fetchFines, finesRefreshKey]);
@@ -767,6 +796,8 @@ export function useCirculationState() {
     () => loans.filter((l) => l.returnDate === today).length,
     [loans, today]
   );
+  // totalOutstandingFines comes from fineSummary below (computed after full fines load).
+  // Here we provide a best-effort value from currently loaded page.
   const totalOutstandingFines = useMemo(
     () => fines.filter((f) => f.status === "UNPAID").reduce((sum, f) => sum + f.amount, 0),
     [fines]
@@ -834,29 +865,9 @@ export function useCirculationState() {
     return filteredLoans.slice(start, start + loanPageSize);
   }, [filteredLoans, loanPage, loanPageSize]);
 
-  // ─── Computed: filtered fines (client-side from server data) ─
-  const filteredFinesAll = useMemo(() => {
-    let result = [...fines];
-    if (fineFilters.status !== "all") {
-      result = result.filter((f) => f.status === fineFilters.status);
-    }
-    if (fineFilters.search) {
-      const q = fineFilters.search.toLowerCase();
-      result = result.filter(
-        (f) =>
-          f.memberName.toLowerCase().includes(q) ||
-          f.bookTitle.toLowerCase().includes(q) ||
-          f.memberNumber.toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [fines, fineFilters]);
-
-  const totalFilteredFines = filteredFinesAll.length;
-  const paginatedFines = useMemo(() => {
-    const start = (finePage - 1) * finePageSize;
-    return filteredFinesAll.slice(start, start + finePageSize);
-  }, [filteredFinesAll, finePage, finePageSize]);
+  // ─── Computed: fines are server-side filtered & paginated ──
+  const totalFilteredFines = finesTotal;
+  const paginatedFines = fines;
 
   // ─── Computed: history (server-side filtered & paginated) ─
   const totalFilteredHistory = historyTotal;

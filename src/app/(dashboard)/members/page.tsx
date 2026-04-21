@@ -161,8 +161,8 @@ export default function MembersPage() {
   const loadUsers = useCallback(async () => {
     setIsUsersLoading(true);
     try {
-      const data = await apiFetch<UserSummary[]>("/users");
-      setUsers(data);
+      const res = await apiFetch<{ data: UserSummary[] }>("/users?limit=100");
+      setUsers(res.data);
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         toast.error("Admin access required to view members.");

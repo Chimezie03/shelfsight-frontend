@@ -8,9 +8,11 @@ import type { Book } from "@/types/book";
 interface CatalogStatsProps {
   books: Book[];
   isLoading: boolean;
+  /** Server-reported total (all matching books, not just the current page). */
+  total?: number;
 }
 
-export function CatalogStats({ books, isLoading }: CatalogStatsProps) {
+export function CatalogStats({ books, isLoading, total }: CatalogStatsProps) {
   const available = books.filter((b) => b.status === "available").length;
   const checkedOut = books.filter((b) => b.status === "checked-out").length;
   const totalCopies = books.reduce((acc, b) => acc + b.copies, 0);
@@ -18,7 +20,7 @@ export function CatalogStats({ books, isLoading }: CatalogStatsProps) {
   const stats = [
     {
       label: "Total Books",
-      value: books.length,
+      value: total ?? books.length,
       icon: <BookOpen className="w-5 h-5 text-brand-navy" />,
       iconBg: "bg-brand-navy/8",
     },
