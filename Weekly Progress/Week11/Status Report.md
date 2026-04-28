@@ -8,16 +8,14 @@
 | Name | Details |
 |------|---------|
 | **Marc Manoj** | **Tasks completed:** |
-| | • Implemented the bulk upload workflow. Built the backend functionality (`POST /books/bulk-file`) utilizing `multer` and `xlsx` to parse spreadsheet rows into recognizable library metadata directly from the frontend request. |
-| | • Developed a UI modal in the catalog dashboard that allows admin users to seamlessly attach and upload Excel `.xlsx` or `.csv` files. |
-| | • Engineered the backend ingestion service to properly validate ISBNs, titles, and authors across batches. Implemented database upsert logic to gracefully handle duplicate entries and failure recovery without breaking the entire upload transaction. |
-| | • Authored `docs/task1/README.md` to document the bulk scale constraints, technical approaches, and execution strategies. |
+| | • Improved the bulk upload workflow. Built the backend functionality (`POST /books/bulk-file`) utilizing `multer` and `xlsx` to parse spreadsheet rows into recognizable library metadata directly from the frontend request. |
+| | • Engineered the backend to be more efficient with the grouping for bulk upload |
+| | • Authored `docs/task1pt2/README.md` to document the bulk scale constraints, technical approaches, and execution strategies. |
 | | • Optimized the backend bulk insertion process to handle 10k+ rows by splitting the operations into batches of 500. Substituted individual transactions for 4 highly optimized SQL batch queries (`findMany` constraints, `createMany` records/copies, and arrayed `$transaction` upserts), which resolved a critical 2.5-minute timeout issue and reduced ingestion time to seconds. |
 | **Time Spent:** 10 hours | **Planned tasks for next week:** |
-| | • figure out why 5k works and 10k doesnt and fix it|
-| | • Assist with final project optimizations and multi-tenant handoff |
+| | • do more rigorous testing to ensure no faults |
 | | **Any issues or challenges:** |
-| | • Resolving Typescript/NextJS build constraints surrounding FormData mapping off the backend required adjusting the payload logic between Next's Server Context and React Context |
+| | • na |
 
 ---
 
