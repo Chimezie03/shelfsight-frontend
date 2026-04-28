@@ -91,8 +91,8 @@ export default function DashboardLayout({
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
-                <h1 className="font-display text-[1rem] font-semibold text-white tracking-tight leading-tight">
-                  ShelfSight
+                <h1 className="font-display text-[1rem] font-semibold text-white tracking-tight leading-tight truncate">
+                  {user?.organizationName ?? "ShelfSight"}
                 </h1>
                 <p className="text-[10px] text-white/50 truncate">
                   {user?.name ?? "Admin Portal"}

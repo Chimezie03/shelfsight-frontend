@@ -32,7 +32,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Loader2, Mail, Search, UserRound, BookOpen, AlertTriangle, Plus, Pencil } from "lucide-react";
+import { Loader2, Mail, Search, UserRound, BookOpen, AlertTriangle, Plus, Pencil, Link2 } from "lucide-react";
+import { createInviteApi } from "@/lib/auth";
 
 type UserRole = "ADMIN" | "STAFF" | "PATRON";
 
@@ -150,6 +151,12 @@ export default function MembersPage() {
   const [createPassword, setCreatePassword] = useState("");
   const [createRole, setCreateRole] = useState<UserRole>("PATRON");
   const [isCreateSaving, setIsCreateSaving] = useState(false);
+
+  const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState<UserRole>("PATRON");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isInviteSaving, setIsInviteSaving] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ url: string } | null>(null);
 
   const [isEditingMember, setIsEditingMember] = useState(false);
   const [editName, setEditName] = useState("");
@@ -270,6 +277,33 @@ export default function MembersPage() {
       }
     } finally {
       setIsCreateSaving(false);
+    }
+  };
+
+  const handleGenerateInvite = async () => {
+    if (!user?.organizationId) return;
+    setIsInviteSaving(true);
+    setInviteResult(null);
+    try {
+      const result = await createInviteApi(user.organizationId, {
+        role: inviteRole,
+        email: inviteEmail.trim() ? inviteEmail.trim() : undefined,
+      });
+      setInviteResult({ url: result.url });
+      try {
+        await navigator.clipboard.writeText(result.url);
+        toast.success("Invite link copied to clipboard. Expires in 7 days.");
+      } catch {
+        toast.success("Invite link generated. Copy it from the dialog below.");
+      }
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message || "Could not generate invite.");
+      } else {
+        toast.error("Could not generate invite.");
+      }
+    } finally {
+      setIsInviteSaving(false);
     }
   };
 
@@ -413,15 +447,27 @@ export default function MembersPage() {
       <Card>
         <CardHeader className="pb-3 flex flex-row flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-base font-display">Members List ({filteredUsers.length})</CardTitle>
-          <Button
-            type="button"
-            size="sm"
-            className="text-xs gap-1"
-            onClick={() => setCreateSheetOpen(true)}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add member
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-xs gap-1"
+              onClick={() => setInviteSheetOpen(true)}
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Invite via link
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="text-xs gap-1"
+              onClick={() => setCreateSheetOpen(true)}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add member
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isUsersLoading ? (
@@ -777,6 +823,97 @@ export default function MembersPage() {
                 "Create member"
               )}
             </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={inviteSheetOpen}
+        onOpenChange={(open) => {
+          setInviteSheetOpen(open);
+          if (!open) {
+            setInviteRole("PATRON");
+            setInviteEmail("");
+            setInviteResult(null);
+          }
+        }}
+      >
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="font-display">Invite via link</SheetTitle>
+            <SheetDescription>
+              Generate a one-time link the recipient uses to set their own name and password.
+              Links expire in 7 days.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-3 px-1 py-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Role</Label>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as UserRole)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="STAFF">Staff</SelectItem>
+                  <SelectItem value="PATRON">Patron</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-email" className="text-xs">
+                Pre-fill email (optional)
+              </Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="recipient@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={isInviteSaving}
+              onClick={() => void handleGenerateInvite()}
+            >
+              {isInviteSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Generating…
+                </>
+              ) : (
+                "Generate invite link"
+              )}
+            </Button>
+            {inviteResult && (
+              <div className="space-y-2 pt-2">
+                <Label className="text-xs">Share this link with the recipient</Label>
+                <Input
+                  readOnly
+                  value={inviteResult.url}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(inviteResult.url);
+                      toast.success("Copied to clipboard.");
+                    } catch {
+                      toast.error("Could not access clipboard.");
+                    }
+                  }}
+                >
+                  Copy link
+                </Button>
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>

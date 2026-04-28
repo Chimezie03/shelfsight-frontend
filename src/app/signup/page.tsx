@@ -18,15 +18,25 @@ import { useAuth } from "@/components/auth-provider";
 import { ApiError } from "@/lib/api";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+interface FieldErrors {
+  orgName?: string;
+  name?: string;
+  email?: string;
+  password?: string;
+  general?: string;
+}
+
+export default function SignupPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { signup, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
+  const [orgName, setOrgName] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -34,34 +44,31 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, authLoading, router]);
 
-  if (isAuthenticated && !authLoading) {
-    return (
-      <div className="min-h-screen bg-brand-cream flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-copper" />
-      </div>
-    );
-  }
-
   function validate(): boolean {
-    const next: typeof errors = {};
+    const next: FieldErrors = {};
 
+    if (!orgName.trim()) {
+      next.orgName = "Library name is required";
+    }
+    if (!name.trim()) {
+      next.name = "Your name is required";
+    }
     if (!email.trim()) {
       next.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       next.email = "Enter a valid email address";
     }
-
     if (!password) {
       next.password = "Password is required";
-    } else if (password.length < 6) {
-      next.password = "Password must be at least 6 characters";
+    } else if (password.length < 8) {
+      next.password = "Password must be at least 8 characters";
     }
 
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
 
@@ -69,17 +76,22 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      await login(email, password);
-      toast.success("Welcome back!");
+      await signup({ orgName, name, email, password });
+      toast.success(`Welcome to ${orgName.trim()}!`);
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 401) {
-          setErrors({ general: "Invalid email or password" });
+        const errorEnvelope = err.data?.error as
+          | { fieldErrors?: Record<string, string> }
+          | undefined;
+        if (errorEnvelope?.fieldErrors) {
+          setErrors(errorEnvelope.fieldErrors as FieldErrors);
+        } else if (err.status === 409) {
+          setErrors({ email: err.message });
         } else if (err.status === 0) {
           setErrors({ general: "Unable to reach the server. Please try again later." });
         } else {
-          setErrors({ general: err.message || "Login failed. Please try again." });
+          setErrors({ general: err.message || "Signup failed. Please try again." });
         }
       } else {
         setErrors({ general: "An unexpected error occurred. Please try again." });
@@ -99,17 +111,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Subtle background texture */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231B2A4A' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-      }} />
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231B2A4A' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
 
-      {/* Decorative gradient orbs */}
       <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-copper/5 blur-3xl" />
       <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-brand-navy/5 blur-3xl" />
 
-      <div className="relative z-10 w-full max-w-[420px]">
-        {/* Logo mark above card */}
+      <div className="relative z-10 w-full max-w-[440px]">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 bg-brand-navy rounded-2xl flex items-center justify-center shadow-lg shadow-brand-navy/20 mb-4">
             <BookOpen className="w-7 h-7 text-brand-copper" />
@@ -124,13 +136,13 @@ export default function LoginPage() {
 
         <Card className="shadow-xl shadow-brand-navy/5 border-border/60">
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Welcome back</CardTitle>
+            <CardTitle className="text-lg">Create your library</CardTitle>
             <CardDescription>
-              Sign in to your account to continue
+              Sign up to spin up a fresh library. You&rsquo;ll be the first administrator.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4" noValidate>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {errors.general && (
                 <div className="rounded-lg bg-destructive/8 border border-destructive/20 px-4 py-3 text-sm text-destructive">
                   {errors.general}
@@ -138,15 +150,53 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2">
+                <Label htmlFor="orgName">Library name</Label>
+                <Input
+                  id="orgName"
+                  type="text"
+                  placeholder="Hatch Memorial Library"
+                  value={orgName}
+                  onChange={(e) => {
+                    setOrgName(e.target.value);
+                    if (errors.orgName) setErrors((p) => ({ ...p, orgName: undefined }));
+                  }}
+                  aria-invalid={!!errors.orgName}
+                  disabled={isSubmitting}
+                />
+                {errors.orgName && (
+                  <p className="text-xs text-destructive">{errors.orgName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name">Your name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Alex Morgan"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors((p) => ({ ...p, name: undefined }));
+                  }}
+                  aria-invalid={!!errors.name}
+                  disabled={isSubmitting}
+                />
+                {errors.name && (
+                  <p className="text-xs text-destructive">{errors.name}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="librarian@library.edu"
+                  placeholder="you@library.org"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                    if (errors.email) setErrors((p) => ({ ...p, email: undefined }));
                   }}
                   aria-invalid={!!errors.email}
                   disabled={isSubmitting}
@@ -162,11 +212,11 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="At least 8 characters"
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
-                      if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                      if (errors.password) setErrors((p) => ({ ...p, password: undefined }));
                     }}
                     aria-invalid={!!errors.password}
                     disabled={isSubmitting}
@@ -199,23 +249,20 @@ export default function LoginPage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing in...
+                    Creating...
                   </>
                 ) : (
-                  "Sign In"
+                  "Create library"
                 )}
               </Button>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-border/60 space-y-3 text-center">
+            <div className="mt-6 pt-5 border-t border-border/60 text-center">
               <p className="text-sm text-muted-foreground">
-                New library?{" "}
-                <Link href="/signup" className="font-medium text-brand-navy hover:underline">
-                  Create your organization
+                Already have an account?{" "}
+                <Link href="/" className="font-medium text-brand-navy hover:underline">
+                  Sign in
                 </Link>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Demo credentials: <span className="font-medium text-foreground/70">admin@shelfsight.com</span> / <span className="font-medium text-foreground/70">password123</span>
               </p>
             </div>
           </CardContent>

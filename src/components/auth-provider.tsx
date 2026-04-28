@@ -12,8 +12,23 @@ import {
   loginApi,
   logoutApi,
   fetchCurrentUser,
+  signupApi,
+  acceptInviteApi,
   type AuthUser,
 } from "@/lib/auth";
+
+interface SignupInput {
+  orgName: string;
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface AcceptInviteInput {
+  token: string;
+  name: string;
+  password: string;
+}
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -21,6 +36,8 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  signup: (input: SignupInput) => Promise<void>;
+  acceptInvite: (input: AcceptInviteInput) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -29,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount, try to restore session from the HttpOnly cookie
   useEffect(() => {
     let cancelled = false;
 
@@ -60,12 +76,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const signup = useCallback(async (input: SignupInput) => {
+    const authedUser = await signupApi(input);
+    setUser(authedUser);
+  }, []);
+
+  const acceptInvite = useCallback(async (input: AcceptInviteInput) => {
+    const authedUser = await acceptInviteApi(input);
+    setUser(authedUser);
+  }, []);
+
   const value: AuthContextValue = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
     logout,
+    signup,
+    acceptInvite,
   };
 
   return (
