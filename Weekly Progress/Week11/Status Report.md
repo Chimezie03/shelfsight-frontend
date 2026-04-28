@@ -81,15 +81,13 @@
 | Name | Details |
 |------|---------|
 | **Chimezie Nnawuihe** | **Tasks completed:** |
-| | • Completed k6 load-testing suite covering concurrent auth, catalog search, circulation, and ingestion workflows. |
-| | • Executed smoke and multi-user runs, generated result summaries, and validated threshold pass status. |
-| | • Improved test accuracy by handling expected circulation contention as expected responses while preserving contention counters. |
-| | • Completed documentation of Task 3 testing approach, execution results, and performance findings. |
+| | • Completed Task 4 k6 load testing after data scaling with comparative runs at 45, 90, and 135 VUs. |
+| | • Added heavier k6 concurrency profiles to expand testing beyond the original baseline. |
+| | • Completed Task 4 documentation covering execution results, summaries, and performance findings. |
 | **Time Spent:** 12 hours | **Planned tasks for next week:** |
-| | • Multi-Organization / Multi-Tenancy Support |
-| | • Expand load testing and compare new results against the current baseline to identify any degradation trends |
+| | • Work on any unresolved tasks and prepare final materials for the team presentation. |
 | | **Any issues or challenges:** |
-| | • Concurrent checkout/checkin activity caused expected request conflicts, so results required careful interpretation to ensure valid conflicts were not misclassified as failures. |
+| | • No major issues or challenges |
 
 ---
 
