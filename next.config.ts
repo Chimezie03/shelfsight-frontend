@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // BACKEND_URL is a server-side-only env var used by the Next.js proxy.
 // It should be set to the full backend origin in every deployment environment.
@@ -7,12 +8,14 @@ import path from "node:path";
 // Example: BACKEND_URL=https://api.shelfsight.example.com
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3001";
 
+// Anchor to this config file's directory, not process.cwd(): when Next launches
+// Turbopack the cwd can drift, which lets a parent-dir package.json hijack the
+// workspace root.
+const PROJECT_ROOT = path.dirname(fileURLToPath(import.meta.url));
+
 const nextConfig: NextConfig = {
-  // Anchor Turbopack to this project so a stray package-lock.json in a
-  // parent directory doesn't trick Next.js into picking the wrong workspace
-  // root (which manifests as every route returning the not-found fallback).
   turbopack: {
-    root: path.resolve("."),
+    root: PROJECT_ROOT,
   },
   async rewrites() {
     return [

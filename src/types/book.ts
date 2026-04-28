@@ -9,6 +9,7 @@ export interface Book {
   category: string;
   location: string;
   shelfId: string | null;
+  shelfTier: number | null;
   status: BookStatus;
   copies: number;
   publisher: string;
@@ -23,8 +24,9 @@ export interface Book {
   lastModified: string;
 }
 
-export type BookFormData = Omit<Book, "id" | "dateAdded" | "lastModified" | "shelfId"> & {
+export type BookFormData = Omit<Book, "id" | "dateAdded" | "lastModified" | "shelfId" | "shelfTier"> & {
   shelfId?: string | null;
+  shelfTier?: number | null;
 };
 
 export type SortField =
@@ -50,9 +52,16 @@ export interface BookQueryParams {
   sortDir?: SortDirection;
 }
 
+export interface CatalogCopyStats {
+  available: number;
+  checkedOut: number;
+  totalCopies: number;
+}
+
 export interface BookListResponse {
   books: Book[];
   total: number;
   page: number;
   pageSize: number;
+  stats: CatalogCopyStats | null;
 }

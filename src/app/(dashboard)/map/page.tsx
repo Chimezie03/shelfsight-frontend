@@ -25,7 +25,6 @@ import {
   MapCallbacksContext,
   type MapCallbacks,
 } from "@/components/map/MapCallbacksContext";
-import { INITIAL_NODES } from "@/components/map/data";
 import type { ShelfFlowNode, ShelfNodeData, ShelfTemplate } from "@/components/map/types";
 
 interface BackendShelfSection {
@@ -87,7 +86,7 @@ function MapPageContent() {
   const shelfQueryParam = shelfIdParam || searchParams.get("shelf");
 
   const { pushSnapshot, undo, redo, canUndo, canRedo, isProgrammatic } =
-    useMapHistory(INITIAL_NODES);
+    useMapHistory([]);
   const reactFlowInstance = useReactFlow();
   const nodeIdCounter = useRef(1);
 
@@ -131,16 +130,17 @@ function MapPageContent() {
             }
           }
         } else {
-          setNodes(INITIAL_NODES);
-          pushSnapshot(INITIAL_NODES);
-          nodeIdCounter.current = INITIAL_NODES.length + 1;
+          // Empty map for fresh orgs — show a blank canvas, not someone else's defaults.
+          setNodes([]);
+          pushSnapshot([]);
+          nodeIdCounter.current = 1;
         }
       } catch {
         if (cancelled) return;
-        setNodes(INITIAL_NODES);
-        pushSnapshot(INITIAL_NODES);
-        nodeIdCounter.current = INITIAL_NODES.length + 1;
-        toast.error('Failed to load map — using default layout');
+        setNodes([]);
+        pushSnapshot([]);
+        nodeIdCounter.current = 1;
+        toast.error('Failed to load map');
       } finally {
         if (!cancelled) {
           setIsLoading(false);

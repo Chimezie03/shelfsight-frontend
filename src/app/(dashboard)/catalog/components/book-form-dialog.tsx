@@ -46,6 +46,7 @@ interface FormValues {
   language: string;
   pageCount: string;
   shelfId: string;
+  shelfTier: string;
   copies: string;
   status: string;
   description: string;
@@ -65,6 +66,7 @@ const defaultValues: FormValues = {
   language: "English",
   pageCount: "",
   shelfId: "",
+  shelfTier: "",
   copies: "1",
   status: "available",
   description: "",
@@ -116,6 +118,7 @@ export function BookFormDialog({
           language: book.language,
           pageCount: String(book.pageCount),
           shelfId: book.shelfId ?? "",
+          shelfTier: book.shelfTier != null ? String(book.shelfTier) : "",
           copies: String(book.copies),
           status: book.status,
           description: book.description,
@@ -160,6 +163,7 @@ export function BookFormDialog({
           .filter(Boolean),
         coverImageUrl: data.coverImageUrl,
         shelfId: data.shelfId || null,
+        shelfTier: data.shelfId && data.shelfTier ? parseInt(data.shelfTier, 10) : null,
       };
 
       if (isEdit && book) {
@@ -255,9 +259,10 @@ export function BookFormDialog({
                     id="isbn"
                     {...register("isbn", {
                       required: "ISBN is required",
-                      pattern: {
-                        value: /^(\d{13}|\d{10}|978-\d{1,5}-\d{1,7}-\d{1,7}-\d)$/,
-                        message: "Use 10 or 13 digits, or 978-X-XX-XXXXXX-X",
+                      validate: (v) => {
+                        const digits = v.replace(/[^0-9Xx]/g, "");
+                        if (digits.length === 10 || digits.length === 13) return true;
+                        return "Must contain 10 or 13 digits (hyphens allowed)";
                       },
                     })}
                     className="mt-1 font-mono"
@@ -271,13 +276,11 @@ export function BookFormDialog({
                 </div>
                 <div>
                   <Label htmlFor="dewey" className="text-xs">
-                    Dewey Decimal <span className="text-destructive">*</span>
+                    Dewey Decimal
                   </Label>
                   <Input
                     id="dewey"
-                    {...register("dewey", {
-                      required: "Dewey number is required",
-                    })}
+                    {...register("dewey")}
                     className="mt-1 font-mono"
                     placeholder="813.52"
                   />
@@ -380,7 +383,7 @@ export function BookFormDialog({
                   <Input
                     id="pageCount"
                     type="number"
-                    {...register("pageCount", { min: 1 })}
+                    {...register("pageCount")}
                     className="mt-1"
                     placeholder="300"
                   />
@@ -400,9 +403,11 @@ export function BookFormDialog({
                   <Label className="text-xs">Shelf Location</Label>
                   <Select
                     value={watch("shelfId")}
-                    onValueChange={(v) =>
-                      setValue("shelfId", v === "__none__" ? "" : v)
-                    }
+                    onValueChange={(v) => {
+                      const next = v === "__none__" ? "" : v;
+                      setValue("shelfId", next);
+                      setValue("shelfTier", "");
+                    }}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select a shelf" />
@@ -417,6 +422,39 @@ export function BookFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
+                {(() => {
+                  const selectedShelfId = watch("shelfId");
+                  const selectedShelf = shelves.find((s) => s.id === selectedShelfId);
+                  const tierCount = selectedShelf?.numberOfTiers ?? 0;
+                  return (
+                    <div>
+                      <Label className="text-xs">Tier</Label>
+                      <Select
+                        value={watch("shelfTier") || "__none__"}
+                        onValueChange={(v) =>
+                          setValue("shelfTier", v === "__none__" ? "" : v)
+                        }
+                        disabled={!selectedShelfId || tierCount === 0}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue
+                            placeholder={
+                              selectedShelfId ? "Select a tier" : "Select a shelf first"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No tier assigned</SelectItem>
+                          {Array.from({ length: tierCount }, (_, i) => i + 1).map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              Tier {n}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
                 <div>
                   <Label htmlFor="copies" className="text-xs">
                     Copies
@@ -485,6 +523,7 @@ export function BookFormDialog({
             </div>
             <DialogFooter className="px-0 pt-2 pb-1 border-t">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
