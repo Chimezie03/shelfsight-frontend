@@ -60,21 +60,20 @@
 
 | Name | Details |
 |------|---------|
-| **Kaelen Raible** | **Tasks completed (Task 5 – Scalability & Query Optimization):** |
-| | • Added GIN trigram indexes (`pg_trgm`) on text search columns and B-tree indexes on `Book.genre` / `ShelfSection.floor` via a new Prisma migration. |
-| | • Pushed book status filter from in-memory JS into a Prisma SQL `WHERE` clause; removed over-fetching on `/auth/me` (dropped loans join). |
-| | • Added server-side pagination to `GET /users` (max 100) and updated all frontend call sites to the new `{ data, pagination }` shape. |
-| | • Enforced `MAX_LIMIT=100` with enum allowlists across all paginated controllers (books, loans, fines, transactions). |
-| | • Added `express-rate-limit` (global: 300 req/15 min; auth: 15 req/15 min), gated to production only. |
-| | • Eliminated the on-mount `limit=9999` catalog fetch; export is now on-demand. Reduced dashboard/reports limits from 500–2000 to 100. |
-| | • Replaced sequential loans pagination loop with `Promise.all`; converted fines tab to server-side filtering. |
-| | • Added optional `?floor=N` filter and 500-row cap to `GET /map`. |
-| | • Documented all changes in `docs/task5/SCALABILITY.md`. |
-| **Time Spent:** 12 hours | **Planned tasks for next week:** |
-| | • Deploy migration and re-run k6 suite to compare p95 latencies against Task 3 baseline. |
+| **Kaelen Raible** | **Tasks completed (Security & Deployment Readiness):** |
+| | • Enforced RBAC on all endpoints — checkout/checkin/shelve restricted to ADMIN/STAFF; waive fines restricted to ADMIN/STAFF; transaction audit log restricted to ADMIN/STAFF. |
+| | • Fixed patron data-scoping on `GET /loans` and `GET /fines` to prevent horizontal privilege escalation. |
+| | • Added startup validation for required env vars (`DATABASE_URL`, `JWT_SECRET`). |
+| | • Replaced abandoned `xlsx` package (high-severity CVE) with `exceljs`. |
+| | • Regenerated Prisma client to fix pre-existing TS build errors. |
+| | • Fixed Render build failure (missing `env.ts` module) and Vercel build failure (`serverActions` placement in `next.config.ts`). |
+| | • Fixed frontend Waive button visibility for STAFF role. |
+| | • 21/21 backend tests passing, zero TypeScript errors. |
+| **Time Spent:** 14 hours | **Planned tasks for next week:** |
+| | • N/A — final week |
 | | **Any issues or challenges:** |
-| | • Local Docker DB was not running; migration validated via schema checks only, pending deployment. |
-| | • Rate limiter caused 100% k6 failures until gated behind `NODE_ENV === 'production'`. |
+| | • `xlsx` replacement required rewriting the file-parsing logic due to API differences with `exceljs`. |
+| | • Env validation file was not tracked in git, causing the Render build to fail. |
 
 ---
 
@@ -93,7 +92,7 @@
 
 ---
 
-**Total Time Spent:** 50 hours
+**Total Time Spent:** 56 hours
 
 **Summary:**
 Week 11 focused on finalizing ShelfSight as a scalable, secure, and production-ready system by addressing high-impact engineering priorities across data handling, architecture, and validation. Bulk upload scaling was improved through batching and optimized database operations, enabling reliable ingestion of 10k+ records while maintaining system stability across catalog, search, and circulation workflows. Multi-tenancy (KAN-45) was introduced to support organization-level data isolation, including schema updates, JWT enhancements, and middleware-based query scoping, alongside frontend support for organization context and onboarding flows. Security and deployment readiness were strengthened through server-side authentication enforcement, RBAC validation, environment configuration checks, and resolution of framework-level issues, followed by production-like smoke testing. Load testing efforts were expanded beyond the initial 45-user baseline, increasing concurrency and analyzing performance metrics such as p95 latency and failure rates to identify bottlenecks and validate system stability under heavier load. Finally, all workstreams were consolidated into a comprehensive project report covering CI/CD, testing, scalability, and limitations, with the addition of basic analytics (catalog usage and circulation trends) and full organization of documentation and demo assets, resulting in a complete, presentation-ready submission.
