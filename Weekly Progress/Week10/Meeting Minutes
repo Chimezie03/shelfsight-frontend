@@ -1,0 +1,53 @@
+# Meeting Minutes
+
+**Project:** ShelfSight - Team #10
+
+**Meeting Type:** Weekly Team Meeting
+
+**Date:** April 21, 2026
+
+**Recorder:** Syed Hasan
+
+## Attendees
+- Chimezie Nnawuihe
+- Mirza Baig
+- Marc Manoj
+- Kaelen Raible
+- Syed Hasan
+
+## Key Discussion Points
+
+1. **Bulk Upload Scaling & Validation**
+   - Identified failures when handling large datasets (>5k records) and the need for batching/chunking.
+   - Emphasized validation with 10k+ records and ensuring all core modules remain stable.
+   - Agreed to document performance benchmarks and system limits.
+
+2. **Multi-Tenancy Implementation (KAN-45 – Highest Priority)**
+   - Discussed adding organization-level data isolation across the system.
+   - Covered backend updates (Organization model, organizationId, JWT changes, query scoping middleware).
+   - Noted frontend updates for organization context and onboarding/invite flow.
+
+3. **Security & Deployment Readiness**
+   - Highlighted need for server-side authentication and strict RBAC enforcement.
+   - Reviewed environment configurations (JWT, DB, CORS).
+   - Planned to resolve Next.js/TypeScript issues and run production-like smoke tests.
+
+4. **Load Testing & Performance (k6)**
+   - Current baseline (45 users) is insufficient.
+   - Plan to increase concurrency and re-run tests after scaling improvements.
+   - Focus on p95 latency, failure rates, and bottleneck identification.
+
+5. **Final Deliverables & Analytics**
+   - Discussed completing final report (CI/CD, testing, scalability, limitations).
+   - Agreed to add basic analytics (catalog usage, circulation trends).
+   - Ensure all documentation, GitHub work, and demo materials are ready for presentation.
+
+---
+
+## Action Items Summary
+
+- Implement batching/chunking for bulk uploads and validate with large datasets (10k+).
+- Complete multi-tenancy setup with proper organization scoping and frontend support.
+- Fix security gaps, enforce RBAC, and validate environment configurations.
+- Expand and rerun load tests with higher concurrency; document performance metrics.
+- Finalize report, add analytics features, and prepare submission/demo materials.

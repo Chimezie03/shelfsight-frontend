@@ -262,7 +262,7 @@ export function FinesTab({
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Pay
                             </Button>
-                            {userRole === "ADMIN" && (
+                            {(userRole === "ADMIN" || userRole === "STAFF") && (
                               <Button
                                 size="sm"
                                 variant="outline"
