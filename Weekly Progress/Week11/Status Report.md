@@ -23,21 +23,23 @@
 
 | Name | Details |
 |------|---------|
-| **Mirza Baig** | **Tasks completed (Task 4 – End-to-End Testing & Critical Bug Resolution):** |
-| | • Stood up the first Playwright E2E harness on the frontend repo — 8 specs covering auth, catalog CRUD, shelf assignment, search, map API, circulation, ingestion, RBAC, search debouncing, and input validation. Final run: **30 passed, 2 conditional skips, 0 failed** in ~20s. |
-| | • Added a backend `POST /__test__/reset` route (guarded by `NODE_ENV !== 'production'`) plus a Playwright `globalSetup` hook so every E2E run starts from a deterministic seeded DB state. |
-| | • Fixed **KAN-57** — standardized every `/map/*` controller response on the `{ success, data }` envelope so the API is consistent with the rest of the endpoints. |
-| | • Fixed **KAN-59** — added email-format and 8-char minimum-password validation to `users.service.ts` on both create and update paths; reuses the existing `AppError.fieldErrors` pattern and the `normalizeEmail` helper (no new dependency). |
-| | • Fixed **KAN-60** — added a heuristic Dewey classifier fallback and a `source: 'llm' \| 'heuristic' \| 'unavailable'` discriminator on `DeweyClassification` so the ingestion pipeline stops silently returning null results when `OPENAI_API_KEY` is missing. |
-| | • Wrote regression specs verifying **KAN-55** (book update persistence), **KAN-56** (shelf dropdown), **KAN-58** (catalog search), **KAN-61** (search debouncing) — all previously fixed by teammates, now covered by automated tests. |
-| | • Authored two launch-ready docs: [`docs/task4-testing-report.md`](../../docs/task4-testing-report.md) (narrative summary, per-ticket status, known limitations) and [`docs/task4-test-results.md`](../../docs/task4-test-results.md) (per-test timings, full backend vitest output, verification matrix). Both feed directly into Task 5's launch documentation. |
-| | • Closed **15 Jira tickets** with evidence-backed comments: KAN-55, 56, 57, 58, 59, 60, 61 (Task 4 scope) plus KAN-4, 5, 6, 7, 8 (historical epics with all children Done) and KAN-65, 68, 70 (CI/CD, pagination cap, rate limiting — verified in teammates' recent commits). |
-| **Time Spent:** 10 hours | **Planned tasks for next week:** |
-| | • **KAN-45 — Multi-Organization / Multi-Tenancy Support (Highest).** Schema-level `Organization` model + `organizationId` FK on User, Book, ShelfSection, IngestionJob. Update JWT payload to carry `organizationId`; add a `requireOrg` middleware wrapper that auto-scopes Prisma queries so data cannot leak between orgs. Frontend AuthProvider exposes current org; add org-scoped sign-up / invite flow. Row-level isolation over schema-per-tenant for MVP. |
+| **Mirza Baig** | **Tasks completed (Task 2 – Multi-Tenancy / KAN-45):** |
+| | • Designed and shipped end-to-end **multi-organization data isolation** so each library's catalog, members, loans, fines, ingestion jobs, and shelf layout are invisible to other orgs in the same deployment. |
+| | • Added `Organization` + `Invite` models and an `organizationId` FK on `User`, `Book`, `BookCopy`, `Loan`, `Fine`, `TransactionLog`, `ShelfSection`, and `IngestionJob`. Replaced the single-column `email` / `isbn` / `barcode` uniques with composite `(organizationId, *)` uniques so the same email/ISBN/barcode can legitimately exist across orgs. |
+| | • Implemented a **two-phase Prisma migration** that is safe over existing prod data: phase 1 adds nullable columns + backfills every legacy row into a default `ShelfSight Library` org; phase 2 flips the columns to `NOT NULL` and swaps in the composite unique indexes. Reversible if anything goes sideways during deploy. |
+| | • Built a `forOrg(organizationId)` Prisma `$extends` factory in `src/lib/prisma.ts` that auto-injects `organizationId` into every read/update/delete `where` clause and every create/upsert/createMany payload — services can no longer accidentally leak across orgs. |
+| | • Extended the JWT payload to carry `organizationId` + `organizationName`, augmented `Express.Request` typings, and refactored every tenant service (users, books, loans, fines, transactions, map, ingest) to take `organizationId` as the first argument. Added a last-admin guard so an org cannot be left without an ADMIN. |
+| | • New auth endpoints: `POST /auth/signup` (atomically creates `Organization` + first ADMIN user in a single transaction), `POST /auth/accept-invite`, and `GET /auth/invites/:token` (no-auth preview for the invitee). Invite tokens are 32-byte base64url strings stored only as sha256 hashes with a 7-day TTL. |
+| | • Added `POST/GET/DELETE /orgs/:id/invites` (admin-only, with cross-org access guard) plus a complete invites service. |
+| | • Frontend: extended `AuthUser` with org context, added `/signup` and `/invite/[token]` pages, surfaced an "Invite via link" button on the Members page that copies the URL to clipboard, and showed the active org name in the sidebar header. |
+| | • Smoke-tested locally end-to-end: admin login returns org context with seeded books; self-serve signup creates a new org with zero books (cross-org isolation verified); invite generation, public preview, and acceptance flow all work; cross-org invite creation correctly blocked with 403. |
+| | • Updated all 21 backend unit tests to mock `forOrg`. Full suite green; no TypeScript errors on either repo. |
+| **Time Spent:** 12 hours | **Planned tasks for next week:** |
+| | • Finishing touches |
 | | **Any issues or challenges:** |
-| | • Next.js 16 Turbopack OOMed repeatedly while compiling the dashboard routes during E2E runs on Node 23; worked around it by forcing the `webpack` dev compiler in the Playwright webServer config with `NODE_OPTIONS=--max-old-space-size=8192`. Documented in the testing report. |
-| | • A stray `package-lock.json` in the home directory tricked Turbopack into picking the wrong workspace root, so every route rendered the `not-found` fallback. Fixed by anchoring `turbopack.root` in `next.config.ts`. |
-| | • Local Postgres maps to host port **5433** (per `docker-compose.yml`), but the checked-in `.env.example` still shows `5432`. Minor but tripped me up early; flagged in the known-limitations section of the testing report for the next person who spins up the stack. |
+| | • The two-phase migration pattern was needed because the composite unique indexes can't be created until the FK column is `NOT NULL`, but the column can't be `NOT NULL` until the legacy data is backfilled. Splitting it lets phase 1 ship reversibly and phase 2 only run once phase 1's backfill is verified. |
+| | • Email is no longer globally unique, so login switched from `findUnique` to `findFirst` against the unscoped client (org is unknown at login time). Documented the long-term `email + orgSlug` disambiguation TODO inline. |
+| | • Supabase's pgbouncer pooler on port 6543 breaks `prisma migrate deploy` due to prepared-statement reuse — direct port 5432 is required for migrations. Captured in the deploy runbook so the next person doesn't lose 20 minutes to it. |
 
 ---
 
@@ -90,7 +92,7 @@
 
 ---
 
-**Total Time Spent:** 56 hours
+**Total Time Spent:** 58 hours
 
 **Summary:**
 Week 11 focused on finalizing ShelfSight as a scalable, secure, and production-ready system by addressing high-impact engineering priorities across data handling, architecture, and validation. Bulk upload scaling was improved through batching and optimized database operations, enabling reliable ingestion of 10k+ records while maintaining system stability across catalog, search, and circulation workflows. Multi-tenancy (KAN-45) was introduced to support organization-level data isolation, including schema updates, JWT enhancements, and middleware-based query scoping, alongside frontend support for organization context and onboarding flows. Security and deployment readiness were strengthened through server-side authentication enforcement, RBAC validation, environment configuration checks, and resolution of framework-level issues, followed by production-like smoke testing. Load testing efforts were expanded beyond the initial 45-user baseline, increasing concurrency and analyzing performance metrics such as p95 latency and failure rates to identify bottlenecks and validate system stability under heavier load. Finally, all workstreams were consolidated into a comprehensive project report covering CI/CD, testing, scalability, and limitations, with the addition of basic analytics (catalog usage and circulation trends) and full organization of documentation and demo assets, resulting in a complete, presentation-ready submission.
