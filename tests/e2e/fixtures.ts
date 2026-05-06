@@ -56,8 +56,9 @@ type Fixtures = {
 };
 
 export const test = base.extend<Fixtures>({
-  loginAs: async ({ request, context }, use) => {
-    await use(async (_page, role) => {
+  // Parameter must not be named `use` — ESLint's `react-hooks/rules-of-hooks` treats it as React's `use()`.
+  loginAs: async ({ request, context }, provideFixture) => {
+    await provideFixture(async (_page, role) => {
       await loginAs(request, context, role);
     });
   },
