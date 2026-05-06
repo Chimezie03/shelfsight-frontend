@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Playwright / CI artifacts (may exist locally; never lint generated bundles)
+    "playwright-report/**",
+    "test-results/**",
   ]),
   // Task 5 CI: allow shadcn/ui wrappers that rely on @ts-nocheck without broad refactors.
   {

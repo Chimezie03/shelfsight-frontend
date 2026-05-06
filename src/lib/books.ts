@@ -27,6 +27,7 @@ interface BackendBook {
   createdAt: string;
   shelfId?: string | null;
   shelfLabel?: string | null;
+  shelfTier?: number | null;
 }
 
 interface BackendBooksResponse {
@@ -36,6 +37,11 @@ interface BackendBooksResponse {
     limit: number;
     total: number;
     totalPages: number;
+  };
+  stats?: {
+    available: number;
+    checkedOut: number;
+    totalCopies: number;
   };
 }
 
@@ -69,6 +75,7 @@ function transformBook(b: BackendBook): Book {
     category,
     location: b.shelfLabel ?? (dewey ? `Shelf ${dewey.split(".")[0]}` : "—"),
     shelfId: b.shelfId ?? null,
+    shelfTier: b.shelfTier ?? null,
     status,
     copies: b.totalCopies,
     publisher: "",
@@ -89,11 +96,16 @@ function transformBook(b: BackendBook): Book {
 export interface ShelfOption {
   id: string;
   label: string;
+  numberOfTiers: number;
 }
 
 export async function getShelves(): Promise<ShelfOption[]> {
-  const sections = await apiFetch<Array<{ id: string; label: string }>>("/map");
-  return sections.map((s) => ({ id: s.id, label: s.label }));
+  const sections = await apiFetch<Array<{ id: string; label: string; numberOfTiers?: number }>>("/map");
+  return sections.map((s) => ({
+    id: s.id,
+    label: s.label,
+    numberOfTiers: s.numberOfTiers ?? 4,
+  }));
 }
 
 // ── API Functions ────────────────────────────────────────────────────
@@ -131,6 +143,7 @@ export async function getBooks(
     total: res.pagination.total,
     page: res.pagination.page,
     pageSize: res.pagination.limit,
+    stats: res.stats ?? null,
   };
 }
 
@@ -153,7 +166,8 @@ export async function createBook(data: BookFormData): Promise<Book> {
       publishYear: data.publishYear ? String(data.publishYear) : undefined,
       copies: data.copies ?? 1,
       status: data.status,
-      shelfId: data.shelfId || undefined,
+      shelfId: data.shelfId ?? null,
+      shelfTier: data.shelfTier ?? null,
     },
   });
   return transformBook(b);
@@ -176,7 +190,8 @@ export async function updateBook(
       publishYear: data.publishYear != null ? String(data.publishYear) : undefined,
       pageCount: data.pageCount != null ? data.pageCount : undefined,
       copies: data.copies != null ? data.copies : undefined,
-      shelfId: data.shelfId || undefined,
+      shelfId: data.shelfId !== undefined ? data.shelfId : undefined,
+      shelfTier: data.shelfTier !== undefined ? data.shelfTier : undefined,
     },
   });
   return transformBook(b);
@@ -189,6 +204,13 @@ export async function deleteBook(id: string): Promise<void> {
 export async function deleteBooks(ids: string[]): Promise<void> {
   // Backend doesn't have a bulk delete endpoint, do them individually
   await Promise.all(ids.map((id) => deleteBook(id)));
+}
+
+export async function deleteAllBooks(): Promise<{ booksDeleted: number; copiesDeleted: number }> {
+  return apiFetch<{ booksDeleted: number; copiesDeleted: number }>("/books/all", {
+    method: "DELETE",
+    body: { confirm: "DELETE ALL BOOKS" },
+  });
 }
 
 // ── CSV Export (client-side) ─────────────────────────────────────────

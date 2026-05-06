@@ -50,6 +50,7 @@ interface CatalogToolbarProps {
   onExport: () => void;
   onBulkDelete: () => void;
   onExportSelected: () => void;
+  onDeleteAll?: () => void;
   userRole?: string;
 }
 
@@ -71,6 +72,7 @@ export function CatalogToolbar({
   onExport,
   onBulkDelete,
   onExportSelected,
+  onDeleteAll,
   userRole,
 }: CatalogToolbarProps) {
   const canEdit = userRole === "ADMIN" || userRole === "STAFF";
@@ -297,6 +299,18 @@ export function CatalogToolbar({
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Add New Book
+              </Button>
+            )}
+
+            {canDelete && onDeleteAll && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-8 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={onDeleteAll}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Delete All
               </Button>
             )}
           </div>

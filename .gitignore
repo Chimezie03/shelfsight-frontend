@@ -38,6 +38,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Railway (local config-as-code; keep out of GitHub)
+railway.json
+railway.toml
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

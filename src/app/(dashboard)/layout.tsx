@@ -83,6 +83,7 @@ export default function DashboardLayout({
       <aside
         className={`${isCollapsed ? "w-[64px]" : "w-52"} bg-brand-navy flex flex-col transition-all duration-300 ease-in-out`}
       >
+        <TooltipProvider delayDuration={0}>
         {/* Logo & user */}
         <div className={`p-4 ${isCollapsed ? "px-2.5" : ""}`}>
           <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5"}`}>
@@ -91,8 +92,8 @@ export default function DashboardLayout({
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
-                <h1 className="font-display text-[1rem] font-semibold text-white tracking-tight leading-tight">
-                  ShelfSight
+                <h1 className="font-display text-[1rem] font-semibold text-white tracking-tight leading-tight truncate">
+                  {user?.organizationName ?? "ShelfSight"}
                 </h1>
                 <p className="text-[10px] text-white/50 truncate">
                   {user?.name ?? "Admin Portal"}
@@ -112,7 +113,6 @@ export default function DashboardLayout({
 
         {/* Navigation */}
         <nav className="flex-1 px-2.5 py-3 space-y-0.5">
-          <TooltipProvider delayDuration={0}>
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.path;
@@ -147,7 +147,6 @@ export default function DashboardLayout({
 
               return linkContent;
             })}
-          </TooltipProvider>
         </nav>
 
         {/* Collapse toggle */}
@@ -195,6 +194,7 @@ export default function DashboardLayout({
             </button>
           )}
         </div>
+        </TooltipProvider>
       </aside>
 
       {/* Main Content */}

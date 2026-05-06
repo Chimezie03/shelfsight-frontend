@@ -21,6 +21,23 @@ interface BulkUploadDialogProps {
 
 const CHUNK_SIZE = 1000;
 
+/** Parsed spreadsheet row before / after column name normalization. */
+type RawBookRow = Record<string, unknown>;
+
+interface BulkBooksResponse {
+  successful?: number;
+  failed?: number;
+}
+
+function readString(row: RawBookRow, ...keys: string[]): unknown {
+  for (const key of keys) {
+    if (key in row && row[key] !== undefined && row[key] !== "") {
+      return row[key];
+    }
+  }
+  return undefined;
+}
+
 export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,32 +54,43 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     }
   };
 
-  const parseFileAndMap = async (file: File): Promise<any[]> => {
+  const parseFileAndMap = async (file: File): Promise<RawBookRow[]> => {
     return new Promise((resolve, reject) => {
       const isCsv = file.name.toLowerCase().endsWith('.csv');
-      
-      const mapItem = (row: any) => ({
+
+      const mapItem = (row: RawBookRow): RawBookRow => ({
         ...row,
-        title: row.title || row.Title,
-        author: row.author || row.Author,
-        isbn: row.isbn || row.ISBN || row['ISBN-13'],
-        genre: row.genre || row.Genre || row.Category || row.category,
-        deweyDecimal: row.deweyDecimal || row.DeweyDecimal || row['Dewey Decimal'],
-        language: row.language || row.Language,
-        publishYear: row.publishYear || row.PublishYear || row.PublicationYear || row['Publication Year'] || row.publishDate || row.PublishDate || row['Publication Date'],
-        pageCount: row.pageCount || row.PageCount || row['Page Count'],
-        copies: row.copies || row.Copies || row['Total Copies'] || row['Available Copies'] || 1,
-        status: row.status || row.Status,
+        title: readString(row, "title", "Title") ?? row.title,
+        author: readString(row, "author", "Author") ?? row.author,
+        isbn: readString(row, "isbn", "ISBN", "ISBN-13") ?? row.isbn,
+        genre: readString(row, "genre", "Genre", "Category", "category") ?? row.genre,
+        deweyDecimal: readString(row, "deweyDecimal", "DeweyDecimal", "Dewey Decimal") ?? row.deweyDecimal,
+        language: readString(row, "language", "Language") ?? row.language,
+        publishYear:
+          readString(
+            row,
+            "publishYear",
+            "PublishYear",
+            "PublicationYear",
+            "Publication Year",
+            "publishDate",
+            "PublishDate",
+            "Publication Date",
+          ) ?? row.publishYear,
+        pageCount: readString(row, "pageCount", "PageCount", "Page Count") ?? row.pageCount,
+        copies: readString(row, "copies", "Copies", "Total Copies", "Available Copies") ?? row.copies ?? 1,
+        status: readString(row, "status", "Status") ?? row.status,
       });
 
       if (isCsv) {
-        Papa.parse(file, {
+        Papa.parse<RawBookRow>(file, {
           header: true,
           skipEmptyLines: true,
           complete: (results) => {
-            resolve(results.data.map(mapItem));
+            const rows = Array.isArray(results.data) ? results.data : [];
+            resolve(rows.map((row) => mapItem(row as RawBookRow)));
           },
-          error: (err: any) => reject(new Error(err.message))
+          error: (err: Error) => reject(new Error(err.message)),
         });
       } else {
         const reader = new FileReader();
@@ -71,9 +99,9 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = xlsx.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
-            const rawItems = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            const rawItems = xlsx.utils.sheet_to_json<RawBookRow>(workbook.Sheets[sheetName]);
             resolve(rawItems.map(mapItem));
-          } catch (err: any) {
+          } catch {
             reject(new Error('Failed to parse Excel file'));
           }
         };
@@ -114,17 +142,17 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
         const chunk = chunks[i];
         
         try {
-          const response = await apiFetch("/books/bulk", {
+          const response = await apiFetch<BulkBooksResponse>("/books/bulk", {
             method: 'POST',
-            body: chunk
-          }) as any;
-          
-          totalSuccess += response?.successful || 0;
-          totalFailed += response?.failed || 0;
-        } catch (err: any) {
+            body: chunk,
+          });
+
+          totalSuccess += response?.successful ?? 0;
+          totalFailed += response?.failed ?? 0;
+        } catch (err: unknown) {
           // If a chunk fails entirely (e.g. 500 error), tally the whole chunk as failed
           totalFailed += chunk.length;
-          console.error(`Chunk ${i+1} failed:`, err);
+          console.error(`Chunk ${i + 1} failed:`, err);
         }
       }
 

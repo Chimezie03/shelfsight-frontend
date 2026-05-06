@@ -30,6 +30,7 @@ interface BookCopyResponse {
   barcode: string;
   status: 'AVAILABLE' | 'CHECKED_OUT' | 'LOST' | 'PROCESSING';
   shelfId: string;
+  shelfTier: number | null;
   book: {
     id: string;
     title: string;
@@ -62,42 +63,54 @@ function deterministicColor(title: string): string {
   return SPINE_COLORS[hashString(title) % SPINE_COLORS.length];
 }
 
+function copyToShelfBook(copy: BookCopyResponse): ShelfBookDetail {
+  return {
+    id: copy.id,
+    title: copy.book.title,
+    author: copy.book.author,
+    isbn: copy.book.isbn,
+    dewey: copy.book.deweyDecimal || '',
+    status: copy.status === 'CHECKED_OUT' ? 'checked-out' : 'available',
+    dueDate: copy.activeLoan?.dueDate || null,
+    spineColor: deterministicColor(copy.book.title),
+    spineWidth: 20 + (hashString(copy.book.isbn) % 20),
+  };
+}
+
 function transformCopiesToTiers(
   copies: BookCopyResponse[],
   numberOfTiers: number,
   capacityPerTier: number,
 ): ShelfTierData[] {
-  const tiers: ShelfTierData[] = [];
-  let copyIdx = 0;
+  // Books with an explicit tier go on that tier; the rest are packed into
+  // the first tier with remaining space (preserves existing behaviour for
+  // legacy copies that haven't been tier-assigned).
+  const tierBuckets: ShelfBookDetail[][] = Array.from(
+    { length: numberOfTiers },
+    () => [],
+  );
+  const untiered: BookCopyResponse[] = [];
 
-  for (let t = 0; t < numberOfTiers; t++) {
-    const books: ShelfBookDetail[] = [];
-    const tierCapacity = capacityPerTier;
-    const booksForTier = copies.slice(copyIdx, copyIdx + tierCapacity);
-    copyIdx += tierCapacity;
-
-    for (const copy of booksForTier) {
-      books.push({
-        id: copy.id,
-        title: copy.book.title,
-        author: copy.book.author,
-        isbn: copy.book.isbn,
-        dewey: copy.book.deweyDecimal || '',
-        status: copy.status === 'CHECKED_OUT' ? 'checked-out' : 'available',
-        dueDate: copy.activeLoan?.dueDate || null,
-        spineColor: deterministicColor(copy.book.title),
-        spineWidth: 20 + (hashString(copy.book.isbn) % 20),
-      });
+  for (const copy of copies) {
+    const t = copy.shelfTier;
+    if (t != null && t >= 1 && t <= numberOfTiers) {
+      tierBuckets[t - 1].push(copyToShelfBook(copy));
+    } else {
+      untiered.push(copy);
     }
-
-    tiers.push({
-      tierNumber: t + 1,
-      books,
-      capacity: capacityPerTier,
-    });
   }
 
-  return tiers;
+  for (const copy of untiered) {
+    const fallbackIdx = tierBuckets.findIndex((b) => b.length < capacityPerTier);
+    const targetIdx = fallbackIdx === -1 ? tierBuckets.length - 1 : fallbackIdx;
+    tierBuckets[targetIdx].push(copyToShelfBook(copy));
+  }
+
+  return tierBuckets.map((books, idx) => ({
+    tierNumber: idx + 1,
+    books,
+    capacity: capacityPerTier,
+  }));
 }
 
 interface ShelfViewerProps {

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type {
   Book,
   BookQueryParams,
+  CatalogCopyStats,
   SortField,
   SortDirection,
 } from "@/types/book";
@@ -35,6 +36,7 @@ export function useCatalogState() {
   // Data
   const [books, setBooks] = useState<Book[]>([]);
   const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<CatalogCopyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,6 +131,7 @@ export function useCatalogState() {
 
       setBooks(result.books);
       setTotal(result.total);
+      setStats(result.stats);
     } catch (err) {
       if (controller.signal.aborted || isAbortError(err)) {
         return;
@@ -143,6 +146,7 @@ export function useCatalogState() {
       setError(message);
       setBooks([]);
       setTotal(0);
+      setStats(null);
     } finally {
       if (requestId === booksRequestIdRef.current) {
         setIsLoading(false);
@@ -281,6 +285,7 @@ export function useCatalogState() {
     // Data
     books,
     total,
+    stats,
     isLoading,
     error,
 

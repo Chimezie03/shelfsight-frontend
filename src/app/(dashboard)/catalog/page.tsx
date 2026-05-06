@@ -15,6 +15,7 @@ import { CatalogPagination } from "./components/catalog-pagination";
 import { BookDetailSheet } from "./components/book-detail-sheet";
 import { BookFormDialog } from "./components/book-form-dialog";
 import { DeleteConfirmDialog } from "./components/delete-confirm-dialog";
+import { DeleteAllBooksDialog } from "./components/delete-all-books-dialog";
 import { BulkUploadDialog } from "./components/bulk-upload-dialog";
 import type { Book } from "@/types/book";
 
@@ -31,6 +32,7 @@ export default function CatalogPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
 
   // Handlers
   const handleViewBook = (book: Book) => {
@@ -61,6 +63,10 @@ export default function CatalogPage() {
     setIsBulkDeleteOpen(true);
   };
 
+  const handleDeleteAll = () => {
+    setIsDeleteAllOpen(true);
+  };
+
   const handleExport = async () => {
     const books = await catalog.exportAllBooks();
     exportBooksCsv(books);
@@ -86,7 +92,11 @@ export default function CatalogPage() {
       </div>
 
       {/* Stats */}
-      <CatalogStats books={catalog.books} isLoading={catalog.isLoading} total={catalog.total} />
+      <CatalogStats
+        isLoading={catalog.isLoading}
+        total={catalog.total}
+        copyStats={catalog.stats}
+      />
 
       {/* Toolbar */}
       <CatalogToolbar
@@ -107,6 +117,7 @@ export default function CatalogPage() {
         onExport={handleExport}
         onBulkDelete={handleBulkDelete}
         onExportSelected={handleExportSelected}
+        onDeleteAll={handleDeleteAll}
         userRole={user?.role}
       />
 
@@ -206,6 +217,18 @@ export default function CatalogPage() {
         bulkDeleteIds={Array.from(catalog.selectedIds)}
         onSuccess={catalog.refreshBooks}
         onClearSelection={catalog.deselectAll}
+      />
+
+      {/* Delete All Confirmation */}
+      <DeleteAllBooksDialog
+        open={isDeleteAllOpen}
+        onOpenChange={setIsDeleteAllOpen}
+        totalBooks={catalog.total}
+        totalCopies={catalog.stats?.totalCopies ?? 0}
+        onSuccess={() => {
+          catalog.deselectAll();
+          catalog.refreshBooks();
+        }}
       />
 
       {/* Bulk Upload Dialog */}
