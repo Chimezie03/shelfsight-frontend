@@ -176,6 +176,7 @@ export default function CirculationPage() {
             loanDays={circ.loanDays}
             onLoanDaysChange={circ.setLoanDays}
             onProcessCheckout={handleCheckout}
+            checkoutTabActive={circ.activeTab === "checkout"}
           />
         </TabsContent>
 

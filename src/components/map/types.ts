@@ -36,6 +36,8 @@ export interface ShelfNodeData {
   deweyRangeEnd: string;
   numberOfTiers: number;
   capacityPerTier: number;
+  /** When set, length should match numberOfTiers; each value is that tier's soft capacity. */
+  tierCapacities?: number[] | null;
   currentUsed: number;
   sectionCode: string;
   notes: string;
@@ -76,6 +78,8 @@ export interface ShelfBookDetail {
   dueDate: string | null;
   spineColor: string;
   spineWidth: number;
+  /** 1-based order within tier (optional). */
+  shelfSlot?: number | null;
 }
 
 // Tier data for shelf visualization

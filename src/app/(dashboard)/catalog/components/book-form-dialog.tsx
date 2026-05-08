@@ -47,6 +47,7 @@ interface FormValues {
   pageCount: string;
   shelfId: string;
   shelfTier: string;
+  shelfSlot: string;
   copies: string;
   status: string;
   description: string;
@@ -67,6 +68,7 @@ const defaultValues: FormValues = {
   pageCount: "",
   shelfId: "",
   shelfTier: "",
+  shelfSlot: "",
   copies: "1",
   status: "available",
   description: "",
@@ -119,6 +121,7 @@ export function BookFormDialog({
           pageCount: String(book.pageCount),
           shelfId: book.shelfId ?? "",
           shelfTier: book.shelfTier != null ? String(book.shelfTier) : "",
+          shelfSlot: book.shelfSlot != null ? String(book.shelfSlot) : "",
           copies: String(book.copies),
           status: book.status,
           description: book.description,
@@ -164,6 +167,12 @@ export function BookFormDialog({
         coverImageUrl: data.coverImageUrl,
         shelfId: data.shelfId || null,
         shelfTier: data.shelfId && data.shelfTier ? parseInt(data.shelfTier, 10) : null,
+        shelfSlot: (() => {
+          const slotRaw = data.shelfSlot?.trim();
+          if (!data.shelfId || !data.shelfTier || !slotRaw) return null;
+          const n = parseInt(slotRaw, 10);
+          return Number.isFinite(n) && n >= 1 ? n : null;
+        })(),
       };
 
       if (isEdit && book) {
@@ -407,6 +416,7 @@ export function BookFormDialog({
                       const next = v === "__none__" ? "" : v;
                       setValue("shelfId", next);
                       setValue("shelfTier", "");
+                      setValue("shelfSlot", "");
                     }}
                   >
                     <SelectTrigger className="mt-1">
@@ -455,6 +465,23 @@ export function BookFormDialog({
                     </div>
                   );
                 })()}
+                <div className="col-span-2">
+                  <Label htmlFor="shelf-slot" className="text-xs">
+                    Slot within tier (optional)
+                  </Label>
+                  <Input
+                    id="shelf-slot"
+                    type="number"
+                    min={1}
+                    className="mt-1"
+                    placeholder="Order on map (1 = first)"
+                    {...register("shelfSlot")}
+                    disabled={!watch("shelfId") || !watch("shelfTier")}
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Leave blank for automatic ordering. Requires shelf and tier.
+                  </p>
+                </div>
                 <div>
                   <Label htmlFor="copies" className="text-xs">
                     Copies

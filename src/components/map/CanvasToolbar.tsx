@@ -47,6 +47,8 @@ interface CanvasToolbarProps {
   onRedo: () => void;
   onSave: () => void;
   saveDisabled?: boolean;
+  /** When true, the Save control is visually emphasized (unsaved layout). */
+  layoutDirty?: boolean;
   onClear: () => void;
   onExportImage: () => void;
 }
@@ -107,6 +109,7 @@ export function CanvasToolbar({
   onRedo,
   onSave,
   saveDisabled = false,
+  layoutDirty = false,
   onClear,
   onExportImage,
 }: CanvasToolbarProps) {
@@ -153,7 +156,19 @@ export function CanvasToolbar({
         <Separator orientation="vertical" className="mx-1 h-5" />
 
         {/* Save */}
-        <ToolbarButton icon={Save} label="Save Layout" onClick={onSave} disabled={saveDisabled} />
+        <div
+          className={cn(
+            "rounded-md",
+            layoutDirty && "ring-2 ring-amber-500/80 ring-offset-1 ring-offset-background",
+          )}
+        >
+          <ToolbarButton
+            icon={Save}
+            label={layoutDirty ? "Save layout (unsaved changes)" : "Save layout"}
+            onClick={onSave}
+            disabled={saveDisabled}
+          />
+        </div>
 
         {/* Clear Canvas with confirmation */}
         <AlertDialog>

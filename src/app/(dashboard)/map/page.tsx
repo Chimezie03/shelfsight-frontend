@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import {
   ReactFlowProvider,
   useReactFlow,
@@ -14,8 +14,22 @@ import {
   useSensors,
   PointerSensor,
 } from "@dnd-kit/core";
+import Link from "next/link";
 import { toast } from "sonner";
+import { Copy, ExternalLink, Library } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { ShelfPalette } from "@/components/map/ShelfPalette";
 import { ShelfSettingsPanel } from "@/components/map/ShelfSettingsPanel";
@@ -26,6 +40,19 @@ import {
   type MapCallbacks,
 } from "@/components/map/MapCallbacksContext";
 import type { ShelfFlowNode, ShelfNodeData, ShelfTemplate } from "@/components/map/types";
+import { computeLayoutSignature } from "@/components/map/mapLayoutSignature";
+
+interface PlacementHintsPayload {
+  unshelvedCount: number;
+  genreCounts: Record<string, number>;
+  shelfHints: Array<{
+    shelfId: string;
+    label: string;
+    category: string | null;
+    estimatedMatchCount: number;
+    note: string;
+  }>;
+}
 
 interface BackendShelfSection {
   id: string;
@@ -46,6 +73,36 @@ interface BackendShelfSection {
   notes: string | null;
   shelfType: string;
   currentUsed: number;
+  tierCapacities?: number[] | null;
+}
+
+/** Merge server shelf stats into existing nodes without moving positions (occupancy / tiers). */
+function mergeShelfSectionsIntoNodes(
+  prev: ShelfFlowNode[],
+  sections: BackendShelfSection[],
+): ShelfFlowNode[] {
+  if (prev.length === 0 && sections.length > 0) {
+    return sections.map(transformBackendToNode);
+  }
+  const byId = new Map(sections.map((s) => [s.id, s]));
+  return prev.map((node) => {
+    const s = byId.get(node.id);
+    if (!s) return node;
+    const tierCapacities =
+      Array.isArray(s.tierCapacities) && s.tierCapacities.length > 0
+        ? s.tierCapacities.filter((n): n is number => typeof n === "number" && n >= 1)
+        : node.data.tierCapacities;
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        currentUsed: s.currentUsed ?? 0,
+        numberOfTiers: s.numberOfTiers ?? node.data.numberOfTiers,
+        capacityPerTier: s.capacityPerTier ?? node.data.capacityPerTier,
+        tierCapacities,
+      } as ShelfNodeData,
+    };
+  });
 }
 
 function transformBackendToNode(section: BackendShelfSection): ShelfFlowNode {
@@ -62,6 +119,10 @@ function transformBackendToNode(section: BackendShelfSection): ShelfFlowNode {
       deweyRangeEnd: section.deweyRangeEnd || '',
       numberOfTiers: section.numberOfTiers || 4,
       capacityPerTier: section.capacityPerTier || 30,
+      tierCapacities:
+        Array.isArray(section.tierCapacities) && section.tierCapacities.length > 0
+          ? section.tierCapacities.filter((n): n is number => typeof n === 'number' && n >= 1)
+          : null,
       currentUsed: section.currentUsed || 0,
       sectionCode: section.sectionCode || '',
       notes: section.notes || '',
@@ -76,19 +137,72 @@ function transformBackendToNode(section: BackendShelfSection): ShelfFlowNode {
 function MapPageContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState<ShelfFlowNode>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [shelfViewerOpen, setShelfViewerOpen] = useState(false);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedLayoutSignature, setSavedLayoutSignature] = useState("");
+  const lastSavedNodesRef = useRef<ShelfFlowNode[]>([]);
+  const [placementHints, setPlacementHints] = useState<PlacementHintsPayload | null>(null);
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const shelfIdParam = searchParams.get("shelfId");
   const shelfQueryParam = shelfIdParam || searchParams.get("shelf");
+  const openViewerFromUrl = searchParams.get("viewer") === "1";
+  const occupancyRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Avoid re-applying ?shelfId / ?viewer when occupancy refresh updates nodes. */
+  const shelfUrlAppliedSigRef = useRef<string>("");
 
   const { pushSnapshot, undo, redo, canUndo, canRedo, isProgrammatic } =
     useMapHistory([]);
   const reactFlowInstance = useReactFlow();
   const nodeIdCounter = useRef(1);
+
+  const establishBaseline = useCallback((next: ShelfFlowNode[]) => {
+    lastSavedNodesRef.current = structuredClone(next);
+    setSavedLayoutSignature(computeLayoutSignature(next));
+  }, []);
+  const establishBaselineRef = useRef(establishBaseline);
+  establishBaselineRef.current = establishBaseline;
+
+  const currentLayoutSignature = useMemo(
+    () => computeLayoutSignature(nodes),
+    [nodes],
+  );
+
+  const layoutDirty =
+    !isLoading &&
+    savedLayoutSignature.length > 0 &&
+    currentLayoutSignature !== savedLayoutSignature;
+
+  useEffect(() => {
+    if (!layoutDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [layoutDirty]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    let cancelled = false;
+    async function loadHints() {
+      try {
+        const data = await apiFetch<PlacementHintsPayload>("/map/placement-hints");
+        if (!cancelled) setPlacementHints(data);
+      } catch {
+        if (!cancelled) setPlacementHints(null);
+      }
+    }
+    void loadHints();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading]);
 
   // Load map data from API on mount
   useEffect(() => {
@@ -120,6 +234,7 @@ function MapPageContent() {
             }
             if (match) {
               setSelectedNodeId(match.id);
+              setShelfViewerOpen(openViewerFromUrl);
               setTimeout(() => {
                 reactFlowInstance.fitView({
                   nodes: [{ id: match.id }],
@@ -129,17 +244,20 @@ function MapPageContent() {
               }, 200);
             }
           }
+          if (!cancelled) establishBaselineRef.current(loaded);
         } else {
           // Empty map for fresh orgs — show a blank canvas, not someone else's defaults.
           setNodes([]);
           pushSnapshot([]);
           nodeIdCounter.current = 1;
+          if (!cancelled) establishBaselineRef.current([]);
         }
       } catch {
         if (cancelled) return;
         setNodes([]);
         pushSnapshot([]);
         nodeIdCounter.current = 1;
+        establishBaselineRef.current([]);
         toast.error('Failed to load map');
       } finally {
         if (!cancelled) {
@@ -154,7 +272,87 @@ function MapPageContent() {
     }
     loadMap();
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- mount-only full load
+
+  // Client navigations: ?shelfId= / ?shelf= / ?viewer=1 after nodes exist
+  useEffect(() => {
+    if (!shelfQueryParam) {
+      shelfUrlAppliedSigRef.current = "";
+      return;
+    }
+    if (isLoading || nodes.length === 0) return;
+
+    let match: ShelfFlowNode | undefined;
+    if (shelfIdParam) {
+      match = nodes.find((n) => n.id === shelfIdParam);
+    } else {
+      const deweyNum = parseInt(shelfQueryParam, 10);
+      match = nodes.find((n) => {
+        const start = parseInt(n.data.deweyRangeStart, 10);
+        const end = parseInt(n.data.deweyRangeEnd, 10);
+        if (isNaN(start) || isNaN(end) || isNaN(deweyNum)) return false;
+        return deweyNum >= start && deweyNum <= end;
+      });
+    }
+
+    if (!match) return;
+
+    const sig = `${shelfIdParam ?? ""}|${shelfQueryParam}|${openViewerFromUrl ? "1" : "0"}`;
+    if (shelfUrlAppliedSigRef.current === sig) return;
+
+    shelfUrlAppliedSigRef.current = sig;
+    setSelectedNodeId(match.id);
+    setShelfViewerOpen(openViewerFromUrl);
+    const t = setTimeout(() => {
+      reactFlowInstance.fitView({
+        nodes: [{ id: match!.id }],
+        padding: 0.45,
+        duration: 400,
+      });
+    }, 120);
+    return () => clearTimeout(t);
+  }, [
+    isLoading,
+    nodes,
+    shelfQueryParam,
+    shelfIdParam,
+    openViewerFromUrl,
+    reactFlowInstance,
+  ]);
+
+  const topGenreHint = useMemo(() => {
+    if (!placementHints?.genreCounts) return null;
+    const entries = Object.entries(placementHints.genreCounts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0];
+  }, [placementHints]);
+
+  useEffect(() => {
+    if (!pathname?.endsWith("/map") || isLoading) return;
+
+    const schedulePump = () => {
+      if (document.visibilityState !== "visible") return;
+      if (occupancyRefreshTimerRef.current) clearTimeout(occupancyRefreshTimerRef.current);
+      occupancyRefreshTimerRef.current = setTimeout(async () => {
+        occupancyRefreshTimerRef.current = null;
+        try {
+          const sections = await apiFetch<BackendShelfSection[]>("/map");
+          setNodes((prev) => mergeShelfSectionsIntoNodes(prev, sections ?? []));
+        } catch {
+          /* stale refresh ignored */
+        }
+      }, 300);
+    };
+
+    window.addEventListener("focus", schedulePump);
+    document.addEventListener("visibilitychange", schedulePump);
+    return () => {
+      window.removeEventListener("focus", schedulePump);
+      document.removeEventListener("visibilitychange", schedulePump);
+      if (occupancyRefreshTimerRef.current) clearTimeout(occupancyRefreshTimerRef.current);
+    };
+  }, [pathname, isLoading, setNodes]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -193,7 +391,10 @@ function MapPageContent() {
     (nodeId: string) => {
       const nextNodes = nodes.filter((n) => n.id !== nodeId);
       setNodes(nextNodes);
-      if (selectedNodeId === nodeId) setSelectedNodeId(null);
+      if (selectedNodeId === nodeId) {
+        setSelectedNodeId(null);
+        setShelfViewerOpen(false);
+      }
       pushSnapshot(nextNodes);
     },
     [nodes, selectedNodeId, setNodes, pushSnapshot]
@@ -221,6 +422,7 @@ function MapPageContent() {
       const nextNodes = [...nodes, newNode];
       setNodes(nextNodes);
       setSelectedNodeId(newId);
+      setShelfViewerOpen(false);
       pushSnapshot(nextNodes);
       toast.success("Shelf duplicated");
     },
@@ -228,7 +430,15 @@ function MapPageContent() {
   );
 
   const selectNode = useCallback((nodeId: string | null) => {
+    setSelectedNodeId((prev) => {
+      if (prev !== nodeId) setShelfViewerOpen(false);
+      return nodeId;
+    });
+  }, []);
+
+  const handleNodeDoubleClick = useCallback((nodeId: string) => {
     setSelectedNodeId(nodeId);
+    setShelfViewerOpen(true);
   }, []);
 
   // --- Callbacks context value ---
@@ -239,8 +449,9 @@ function MapPageContent() {
       onDuplicateNode: duplicateNode,
       onSelectNode: selectNode,
       onCommitChange: commitChange,
+      onOpenShelfViewer: handleNodeDoubleClick,
     }),
-    [updateNodeData, deleteNode, duplicateNode, selectNode, commitChange]
+    [updateNodeData, deleteNode, duplicateNode, selectNode, commitChange, handleNodeDoubleClick]
   );
 
   // --- DnD: palette → canvas ---
@@ -276,6 +487,7 @@ function MapPageContent() {
       const nextNodes = [...nodes, newNode];
       setNodes(nextNodes);
       setSelectedNodeId(newId);
+      setShelfViewerOpen(false);
       pushSnapshot(nextNodes);
       toast.success(`Added ${template.label}`);
     },
@@ -343,6 +555,7 @@ function MapPageContent() {
         deweyRangeEnd: n.data.deweyRangeEnd || null,
         numberOfTiers: n.data.numberOfTiers,
         capacityPerTier: n.data.capacityPerTier,
+        tierCapacities: n.data.tierCapacities?.length ? n.data.tierCapacities : null,
         color: n.data.color || null,
         rotation: n.data.rotation,
         notes: n.data.notes || null,
@@ -358,20 +571,34 @@ function MapPageContent() {
       const updatedNodes = updated.map(transformBackendToNode);
       setNodes(updatedNodes);
       pushSnapshot(updatedNodes);
+      establishBaseline(updatedNodes);
+      setShelfViewerOpen(false);
       toast.success('Layout saved successfully');
     } catch {
       toast.error('Failed to save layout');
     } finally {
       setIsSaving(false);
     }
-  }, [nodes, setNodes, pushSnapshot]);
+  }, [nodes, setNodes, pushSnapshot, establishBaseline]);
 
   const handleClear = useCallback(() => {
     pushSnapshot(nodes);
     setNodes([]);
     setSelectedNodeId(null);
+    setShelfViewerOpen(false);
     toast.success("Canvas cleared");
   }, [nodes, setNodes, pushSnapshot]);
+
+  const handleDiscardLayout = useCallback(() => {
+    const restored = structuredClone(lastSavedNodesRef.current);
+    isProgrammatic.current = true;
+    setNodes(restored);
+    isProgrammatic.current = false;
+    pushSnapshot(restored);
+    establishBaseline(restored);
+    setShelfViewerOpen(false);
+    toast.info("Restored last saved layout");
+  }, [setNodes, pushSnapshot, establishBaseline]);
 
   const handleExportImage = useCallback(async () => {
     const viewport = document.querySelector(
@@ -440,6 +667,46 @@ function MapPageContent() {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <MapCallbacksContext.Provider value={callbacks}>
         <div className="flex h-full flex-col">
+          {layoutDirty && (
+            <div
+              role="status"
+              className="flex-none flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 bg-amber-50 px-3 py-2 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-50"
+            >
+              <p className="text-[13px] font-medium">
+                You have unsaved layout changes. Save to keep them, or discard to reload the last saved map.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 bg-brand-navy text-white hover:bg-brand-navy/90"
+                  disabled={isSaving}
+                  onClick={() => void handleSave()}
+                >
+                  Save layout
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-8" disabled={isSaving}>
+                      Discard changes
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">Discard layout changes?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will revert the map to the last saved layout. Changes that were not saved will be lost.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDiscardLayout}>Discard</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          )}
           {/* Toolbar */}
           <div className="flex-none border-b px-3 py-2">
             <CanvasToolbar
@@ -456,10 +723,88 @@ function MapPageContent() {
               onRedo={handleRedo}
               onSave={handleSave}
               saveDisabled={isSaving}
+              layoutDirty={layoutDirty}
               onClear={handleClear}
               onExportImage={handleExportImage}
             />
           </div>
+
+          {placementHints && placementHints.shelfHints.length > 0 && (
+            <div className="flex-none border-b border-border bg-card px-4 py-3 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 gap-2">
+                  <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-navy/10 text-brand-navy">
+                    <Library className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <h3 className="text-sm font-display font-semibold tracking-tight">
+                      Shelving assistant
+                    </h3>
+                    <p className="max-w-xl text-[11px] leading-snug text-muted-foreground">
+                      {placementHints.unshelvedCount} unshelved available cop
+                      {placementHints.unshelvedCount === 1 ? "y" : "ies"}. Shelf chips match{" "}
+                      <span className="font-medium text-foreground">genre → shelf category</span> (exact). Nothing
+                      moves automatically — use this while shelving from the catalog.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {topGenreHint && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 text-[11px]"
+                      title="Copy for spine labels or staff notes"
+                      onClick={() => {
+                        const text = `${topGenreHint[0]} (${topGenreHint[1]} unshelved)`;
+                        void navigator.clipboard.writeText(text).then(() =>
+                          toast.success("Copied genre summary"),
+                        );
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy top genre
+                    </Button>
+                  )}
+                  <Button variant="default" size="sm" className="h-8 gap-1.5 bg-brand-navy text-[11px] text-white hover:bg-brand-navy/90" asChild>
+                    <Link href="/catalog?unshelved=1">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Unshelved in catalog
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-3 flex max-h-32 flex-wrap gap-2 overflow-y-auto">
+                {placementHints.shelfHints
+                  .filter((h) => h.estimatedMatchCount > 0)
+                  .map((h) => (
+                    <button
+                      key={h.shelfId}
+                      type="button"
+                      className="group flex max-w-[240px] flex-col rounded-lg border border-border bg-background px-2.5 py-1.5 text-left shadow-sm transition-colors hover:bg-accent"
+                      title={h.note}
+                      onClick={() => {
+                        setSelectedNodeId(h.shelfId);
+                        setShelfViewerOpen(false);
+                        setTimeout(() => {
+                          reactFlowInstance.fitView({
+                            nodes: [{ id: h.shelfId }],
+                            padding: 0.45,
+                            duration: 400,
+                          });
+                        }, 120);
+                      }}
+                    >
+                      <span className="truncate text-[11px] font-medium">{h.label}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {h.estimatedMatchCount} genre match{h.estimatedMatchCount === 1 ? "" : "es"}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Main content: palette + canvas + settings */}
           <div className="flex flex-1 overflow-hidden">
@@ -473,6 +818,7 @@ function MapPageContent() {
                 nodes={nodes}
                 onNodesChange={wrappedOnNodesChange}
                 onNodeClick={selectNode}
+                onNodeDoubleClick={handleNodeDoubleClick}
                 snapToGrid={snapToGrid}
                 showMinimap={showMinimap}
               />
@@ -481,7 +827,12 @@ function MapPageContent() {
             <ShelfSettingsPanel
               node={selectedNode}
               onUpdateNodeData={updateNodeData}
-              onClose={() => setSelectedNodeId(null)}
+              shelfViewerOpen={shelfViewerOpen}
+              onShelfViewerOpenChange={setShelfViewerOpen}
+              onClose={() => {
+                setSelectedNodeId(null);
+                setShelfViewerOpen(false);
+              }}
             />
           </div>
         </div>

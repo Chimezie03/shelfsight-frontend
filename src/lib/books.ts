@@ -28,6 +28,7 @@ interface BackendBook {
   shelfId?: string | null;
   shelfLabel?: string | null;
   shelfTier?: number | null;
+  shelfSlot?: number | null;
 }
 
 interface BackendBooksResponse {
@@ -76,6 +77,7 @@ function transformBook(b: BackendBook): Book {
     location: b.shelfLabel ?? (dewey ? `Shelf ${dewey.split(".")[0]}` : "—"),
     shelfId: b.shelfId ?? null,
     shelfTier: b.shelfTier ?? null,
+    shelfSlot: b.shelfSlot ?? null,
     status,
     copies: b.totalCopies,
     publisher: "",
@@ -125,6 +127,7 @@ export async function getBooks(
   if (params.yearMax != null) searchParams.set("yearMax", String(params.yearMax));
   if (params.sortBy) searchParams.set("sortBy", params.sortBy);
   if (params.sortDir) searchParams.set("sortDir", params.sortDir);
+  if (params.unshelved) searchParams.set("unshelved", "1");
 
   // Pagination
   const page = params.page ?? 1;
@@ -168,6 +171,7 @@ export async function createBook(data: BookFormData): Promise<Book> {
       status: data.status,
       shelfId: data.shelfId ?? null,
       shelfTier: data.shelfTier ?? null,
+      shelfSlot: data.shelfSlot ?? null,
     },
   });
   return transformBook(b);
@@ -192,6 +196,7 @@ export async function updateBook(
       copies: data.copies != null ? data.copies : undefined,
       shelfId: data.shelfId !== undefined ? data.shelfId : undefined,
       shelfTier: data.shelfTier !== undefined ? data.shelfTier : undefined,
+      shelfSlot: data.shelfSlot !== undefined ? data.shelfSlot : undefined,
     },
   });
   return transformBook(b);
