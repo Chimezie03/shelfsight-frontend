@@ -115,6 +115,7 @@ type ReviewState = {
   deweyConfidence: number | null;
   deweyReasoning: string | null;
   language: string | null;
+  copies: number;
 };
 
 const emptyReviewState: ReviewState = {
@@ -132,6 +133,7 @@ const emptyReviewState: ReviewState = {
   deweyConfidence: null,
   deweyReasoning: null,
   language: null,
+  copies: 1,
 };
 
 type StatusFilter = "ALL" | "COMPLETED" | "APPROVED" | "REJECTED";
@@ -441,6 +443,7 @@ export default function BookIngestionPage() {
         deweyConfidence: null,
         deweyReasoning: null,
         language: null,
+        copies: 1,
       });
 
       if (result.found) {
@@ -532,6 +535,7 @@ export default function BookIngestionPage() {
         deweyConfidence: parsed.confidence,
         deweyReasoning: parsed.reasoning,
         language: parsed.language,
+        copies: 1,
       });
 
       if (hasExtractedMetadata) {
@@ -574,6 +578,7 @@ export default function BookIngestionPage() {
           language: reviewData.language || undefined,
           coverImageUrl: reviewData.coverImageUrl || undefined,
           publishDate: reviewData.publishDate || undefined,
+          copies: reviewData.copies,
         },
       });
 
@@ -1008,6 +1013,27 @@ export default function BookIngestionPage() {
                           onChange={updateField("coverImageUrl")}
                           className="mt-1"
                         />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Number of Copies</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={1000}
+                          value={reviewData.copies}
+                          onChange={(e) => {
+                            const next = parseInt(e.target.value, 10);
+                            setReviewData((current) =>
+                              current
+                                ? { ...current, copies: Number.isFinite(next) ? Math.max(1, next) : 1 }
+                                : current,
+                            );
+                          }}
+                          className="mt-1"
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          How many physical copies of this book are you adding?
+                        </p>
                       </div>
                     </div>
 

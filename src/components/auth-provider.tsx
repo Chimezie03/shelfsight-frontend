@@ -38,6 +38,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
   acceptInvite: (input: AcceptInviteInput) => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -86,6 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(authedUser);
   }, []);
 
+  const refresh = useCallback(async () => {
+    const currentUser = await fetchCurrentUser();
+    setUser(currentUser);
+  }, []);
+
   const value: AuthContextValue = {
     user,
     isAuthenticated: !!user,
@@ -94,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     signup,
     acceptInvite,
+    refresh,
   };
 
   return (

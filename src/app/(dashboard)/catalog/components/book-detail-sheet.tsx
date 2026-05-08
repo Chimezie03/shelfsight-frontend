@@ -184,7 +184,7 @@ export function BookDetailSheet({
           </div>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 min-h-0 px-6">
           <div className="space-y-6 pb-6">
             {/* Bibliographic Details */}
             <div>
