@@ -91,6 +91,23 @@ export async function fetchInvitePreview(token: string): Promise<InvitePreview> 
   return apiFetch<InvitePreview>(`/auth/invites/${encodeURIComponent(token)}`);
 }
 
+export async function requestForgotPasswordApi(email: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+export async function resetPasswordApi(
+  token: string,
+  password: string,
+): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: { token, password },
+  });
+}
+
 export interface InviteCreateResponse {
   invite: {
     id: string;

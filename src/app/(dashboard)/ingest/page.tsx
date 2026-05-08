@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -15,6 +16,7 @@ import {
   Search,
   Sparkles,
   Upload,
+  UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -514,7 +516,9 @@ export default function BookIngestionPage() {
       );
 
       setReviewData({
-        isbn: parsed.detectedIsbn,
+        // Prefer the ISBN from the search/LLM-resolved metadata; fall back to
+        // the OCR-detected ISBN only when nothing else was resolved.
+        isbn: parsed.metadata?.isbn || parsed.detectedIsbn || "",
         title: parsed.metadata?.title ?? "",
         author: parsed.metadata?.author ?? "",
         publisher: parsed.metadata?.publisher ?? "",
@@ -762,51 +766,25 @@ export default function BookIngestionPage() {
                     </Button>
                   </form>
 
-                  {reviewData?.coverImageUrl ? (
-                    <div className="overflow-hidden rounded-xl border border-border">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={reviewData.coverImageUrl}
-                        alt={reviewData.title || "Book cover"}
-                        className="h-72 w-full bg-secondary/40 object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-secondary/25 p-8 text-center">
-                      <BookOpen className="mb-4 h-8 w-8 text-muted-foreground" />
-                      <p className="text-[13px] font-medium">No cover image loaded</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        A cover preview appears here when the metadata source provides one.
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-secondary/20 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium">Have a list of ISBNs?</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Bulk-import from a .txt or CSV file in the catalog.
                       </p>
                     </div>
-                  )}
-
-                  {reviewData && (
-                    <div className="rounded-xl border border-border bg-secondary/30 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[13px] font-medium text-foreground">
-                            {reviewData.found ? "Metadata found" : "Manual review needed"}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {reviewData.source
-                              ? `Source: ${reviewData.source}`
-                              : "No external metadata source returned a match."}
-                          </p>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={
-                            reviewData.found
-                              ? "border-brand-sage/20 bg-brand-sage/10 text-brand-sage"
-                              : "border-brand-amber/20 bg-brand-amber/10 text-brand-amber"
-                          }
-                        >
-                          {reviewData.found ? "Ready for review" : "Fill manually"}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5 text-[11px]"
+                    >
+                      <Link href="/catalog?bulk=isbn">
+                        <UploadCloud className="h-3.5 w-3.5" />
+                        Bulk ISBN upload
+                      </Link>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -948,6 +926,23 @@ export default function BookIngestionPage() {
                         </Badge>
                       )}
                     </div>
+
+                    {reviewData.source && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Source: <span className="font-medium text-foreground">{reviewData.source}</span>
+                      </p>
+                    )}
+
+                    {reviewData.coverImageUrl && (
+                      <div className="overflow-hidden rounded-xl border border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={reviewData.coverImageUrl}
+                          alt={reviewData.title || "Book cover"}
+                          className="h-56 w-full bg-secondary/40 object-contain"
+                        />
+                      </div>
+                    )}
 
                     <div className="space-y-3">
                       <div>

@@ -10,6 +10,8 @@ export interface Book {
   location: string;
   shelfId: string | null;
   shelfTier: number | null;
+  /** 1-based slot within the tier for ordering on the map (optional). */
+  shelfSlot: number | null;
   status: BookStatus;
   copies: number;
   publisher: string;
@@ -24,9 +26,13 @@ export interface Book {
   lastModified: string;
 }
 
-export type BookFormData = Omit<Book, "id" | "dateAdded" | "lastModified" | "shelfId" | "shelfTier"> & {
+export type BookFormData = Omit<
+  Book,
+  "id" | "dateAdded" | "lastModified" | "shelfId" | "shelfTier" | "shelfSlot"
+> & {
   shelfId?: string | null;
   shelfTier?: number | null;
+  shelfSlot?: number | null;
 };
 
 export type SortField =
@@ -50,6 +56,8 @@ export interface BookQueryParams {
   pageSize?: number;
   sortBy?: SortField;
   sortDir?: SortDirection;
+  /** Only books with at least one unshelved AVAILABLE copy (API: unshelved=1). */
+  unshelved?: boolean;
 }
 
 export interface CatalogCopyStats {

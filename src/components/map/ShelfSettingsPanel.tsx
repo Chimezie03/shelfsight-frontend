@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { COLOR_PRESETS } from "./data";
 import { ShelfViewer } from "./ShelfViewer";
@@ -38,14 +39,24 @@ interface ShelfSettingsPanelProps {
   node: ShelfFlowNode | null;
   onUpdateNodeData: (nodeId: string, data: Partial<ShelfNodeData>) => void;
   onClose: () => void;
+  shelfViewerOpen: boolean;
+  onShelfViewerOpenChange: (open: boolean) => void;
 }
 
 export function ShelfSettingsPanel({
   node,
   onUpdateNodeData,
   onClose,
+  shelfViewerOpen,
+  onShelfViewerOpenChange,
 }: ShelfSettingsPanelProps) {
-  const [viewerOpen, setViewerOpen] = useState(false);
+  const [tierCapsDraft, setTierCapsDraft] = useState("");
+
+  useEffect(() => {
+    if (!node) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync draft when selected shelf or tier caps change
+    setTierCapsDraft(node.data.tierCapacities?.join(", ") ?? "");
+  }, [node?.id, node?.data.tierCapacities]);
 
   const update = useCallback(
     (data: Partial<ShelfNodeData>) => {
@@ -177,9 +188,12 @@ export function ShelfSettingsPanel({
                   </div>
                   <Slider
                     value={[node.data.numberOfTiers]}
-                    onValueChange={([value]) =>
-                      update({ numberOfTiers: value })
-                    }
+                    onValueChange={([value]) => {
+                      const caps = node.data.tierCapacities;
+                      const nextCaps =
+                        caps && caps.length === value ? caps : null;
+                      update({ numberOfTiers: value, tierCapacities: nextCaps });
+                    }}
                     min={1}
                     max={8}
                     step={1}
@@ -203,6 +217,48 @@ export function ShelfSettingsPanel({
                     }
                     className="h-8 text-xs"
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tier-caps" className="text-xs">
+                    Per-tier capacities (optional)
+                  </Label>
+                  <Textarea
+                    id="tier-caps"
+                    rows={2}
+                    value={tierCapsDraft}
+                    onChange={(e) => setTierCapsDraft(e.target.value)}
+                    onBlur={() => {
+                      if (!node) return;
+                      const raw = tierCapsDraft.trim();
+                      if (!raw) {
+                        update({ tierCapacities: null });
+                        return;
+                      }
+                      const parts = raw.split(",").map((s) => parseInt(s.trim(), 10));
+                      if (parts.some((n) => !Number.isFinite(n) || n < 1)) {
+                        toast.error(
+                          "Use positive whole numbers separated by commas, or leave empty.",
+                        );
+                        setTierCapsDraft(node.data.tierCapacities?.join(", ") ?? "");
+                        return;
+                      }
+                      if (parts.length !== node.data.numberOfTiers) {
+                        toast.error(
+                          `Provide exactly ${node.data.numberOfTiers} values (one per tier), or leave empty.`,
+                        );
+                        setTierCapsDraft(node.data.tierCapacities?.join(", ") ?? "");
+                        return;
+                      }
+                      update({ tierCapacities: parts });
+                    }}
+                    placeholder="e.g. 40, 35, 30, 30"
+                    className="min-h-[52px] text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    Leave empty to use the same capacity for every tier. You can still shelve more books than these
+                    soft limits.
+                  </p>
                 </div>
 
                 {/* Current Used (computed from real data) */}
@@ -286,7 +342,7 @@ export function ShelfSettingsPanel({
                   variant="outline"
                   size="sm"
                   className="w-full text-xs h-7"
-                  onClick={() => setViewerOpen(true)}
+                  onClick={() => onShelfViewerOpenChange(true)}
                 >
                   <Eye className="mr-1.5 h-3 w-3" />
                   View Shelf
@@ -301,8 +357,8 @@ export function ShelfSettingsPanel({
 
     {node && (
       <ShelfViewer
-        open={viewerOpen}
-        onOpenChange={setViewerOpen}
+        open={shelfViewerOpen}
+        onOpenChange={onShelfViewerOpenChange}
         data={node.data}
         shelfId={node.id}
       />

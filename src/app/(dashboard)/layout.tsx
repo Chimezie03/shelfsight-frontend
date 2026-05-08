@@ -78,10 +78,10 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar — dark navy */}
+    <div className="flex h-screen min-h-0 w-full overflow-hidden bg-background">
+      {/* Sidebar — dark navy; scrolls internally if needed so collapse/logout stay reachable */}
       <aside
-        className={`${isCollapsed ? "w-[64px]" : "w-52"} bg-brand-navy flex flex-col transition-all duration-300 ease-in-out`}
+        className={`${isCollapsed ? "w-[64px]" : "w-52"} flex h-full min-h-0 flex-shrink-0 flex-col overflow-y-auto bg-brand-navy transition-all duration-300 ease-in-out`}
       >
         <TooltipProvider delayDuration={0}>
         {/* Logo & user */}
@@ -197,8 +197,8 @@ export default function DashboardLayout({
         </TooltipProvider>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      {/* Main content scrolls; shell height fixed so sidebar footer stays in view */}
+      <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import type {
   Book,
   BookQueryParams,
@@ -33,6 +34,8 @@ function isAbortError(error: unknown): boolean {
 }
 
 export function useCatalogState() {
+  const searchParams = useSearchParams();
+
   // Data
   const [books, setBooks] = useState<Book[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,6 +50,8 @@ export function useCatalogState() {
 
   // Filters
   const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
+  /** From URL ?unshelved=1 — books with an AVAILABLE copy not on any shelf. */
+  const unshelvedOnly = searchParams.get("unshelved") === "1";
 
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -106,6 +111,7 @@ export function useCatalogState() {
         sortDir: sortField ? sortDirection : undefined,
         page,
         pageSize,
+        unshelved: unshelvedOnly || undefined,
       };
 
       const result = await getBooks(params, controller.signal);
@@ -152,7 +158,7 @@ export function useCatalogState() {
         setIsLoading(false);
       }
     }
-  }, [debouncedSearch, filters, sortField, sortDirection, page, pageSize]);
+  }, [debouncedSearch, filters, sortField, sortDirection, page, pageSize, unshelvedOnly]);
 
   /** Fetch all books matching current filters for CSV export (on-demand). */
   const exportAllBooks = useCallback(async () => {
@@ -167,10 +173,11 @@ export function useCatalogState() {
       sortDir: sortField ? sortDirection : undefined,
       page: 1,
       pageSize: 500,
+      unshelved: unshelvedOnly || undefined,
     };
     const result = await getBooks(params);
     return result.books;
-  }, [debouncedSearch, filters, sortField, sortDirection]);
+  }, [debouncedSearch, filters, sortField, sortDirection, unshelvedOnly]);
 
   const queryKey = useMemo(
     () =>
@@ -180,8 +187,9 @@ export function useCatalogState() {
         sortField,
         sortDirection,
         pageSize,
+        unshelvedOnly,
       }),
-    [debouncedSearch, filters, sortField, sortDirection, pageSize]
+    [debouncedSearch, filters, sortField, sortDirection, pageSize, unshelvedOnly]
   );
 
   useEffect(() => {
@@ -211,7 +219,8 @@ export function useCatalogState() {
     (filters.status !== "all" ? 1 : 0) +
     (filters.language !== "all" ? 1 : 0) +
     (filters.yearMin ? 1 : 0) +
-    (filters.yearMax ? 1 : 0);
+    (filters.yearMax ? 1 : 0) +
+    (unshelvedOnly ? 1 : 0);
 
   const isSearchPending = debouncedSearch !== searchQuery.trim();
   const isSearching = isLoading && !!debouncedSearch && !isSearchPending;
@@ -221,10 +230,10 @@ export function useCatalogState() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS);
     setSearchQuery("");
-  };
+  }, []);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -298,6 +307,7 @@ export function useCatalogState() {
     // Filters
     filters,
     setFilter,
+    unshelvedOnly,
     activeFilterCount,
     clearAllFilters,
 

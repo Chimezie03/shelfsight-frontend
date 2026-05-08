@@ -19,6 +19,7 @@ interface MapCanvasProps {
   nodes: ShelfFlowNode[];
   onNodesChange: OnNodesChange<ShelfFlowNode>;
   onNodeClick: (nodeId: string) => void;
+  onNodeDoubleClick?: (nodeId: string) => void;
   snapToGrid: boolean;
   showMinimap: boolean;
 }
@@ -27,6 +28,7 @@ export function MapCanvas({
   nodes,
   onNodesChange,
   onNodeClick,
+  onNodeDoubleClick,
   snapToGrid,
   showMinimap,
 }: MapCanvasProps) {
@@ -42,6 +44,9 @@ export function MapCanvas({
         onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => onNodeClick(node.id)}
+        onNodeDoubleClick={
+          onNodeDoubleClick ? (_, node) => onNodeDoubleClick(node.id) : undefined
+        }
         snapToGrid={snapToGrid}
         snapGrid={[20, 20]}
         deleteKeyCode={["Backspace", "Delete"]}

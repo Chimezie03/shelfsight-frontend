@@ -44,7 +44,7 @@ const SHELF_TYPE_LABELS: Record<ShelfType, string> = {
 };
 
 function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNodeData }) {
-  const { onUpdateNodeData, onDeleteNode, onDuplicateNode, onCommitChange } =
+  const { onUpdateNodeData, onDeleteNode, onDuplicateNode, onCommitChange, onOpenShelfViewer } =
     useMapCallbacks();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -57,13 +57,22 @@ function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNod
   const capacityColor = getCapacityFill(data.currentUsed, totalCapacity);
 
   // Inline editing
-  const handleDoubleClick = useCallback(
+  const handleTitleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setIsEditing(true);
       setEditValue(data.label);
     },
     [data.label]
+  );
+
+  const handleNodeBodyDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-shelf-title]")) return;
+      onOpenShelfViewer(id);
+    },
+    [id, onOpenShelfViewer]
   );
 
   const commitEdit = useCallback(() => {
@@ -121,6 +130,7 @@ function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNod
             "hover:shadow-md",
             selected && "ring-2 ring-brand-copper ring-offset-1 ring-offset-background"
           )}
+          onDoubleClick={handleNodeBodyDoubleClick}
           style={{
             width: "100%",
             height: "100%",
@@ -161,8 +171,9 @@ function ShelfNodeComponent({ id, data, selected }: NodeProps & { data: ShelfNod
                   />
                 ) : (
                   <p
+                    data-shelf-title
                     className="truncate text-xs font-display font-semibold cursor-text"
-                    onDoubleClick={handleDoubleClick}
+                    onDoubleClick={handleTitleDoubleClick}
                     title={data.label}
                   >
                     {data.label}

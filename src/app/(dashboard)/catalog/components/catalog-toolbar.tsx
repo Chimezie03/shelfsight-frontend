@@ -28,6 +28,7 @@ import {
   X,
   ChevronDown,
   Loader2,
+  MapPin,
 } from "lucide-react";
 import { CATEGORIES, LANGUAGES, STATUS_OPTIONS } from "../constants";
 import type { CatalogFilters } from "../hooks/use-catalog-state";
@@ -52,6 +53,10 @@ interface CatalogToolbarProps {
   onExportSelected: () => void;
   onDeleteAll?: () => void;
   userRole?: string;
+  /** True when URL includes ?unshelved=1 (from map “Unshelved in catalog”). */
+  unshelvedOnly?: boolean;
+  /** Clears unshelved mode by updating the URL (removes query param). */
+  onClearUnshelvedFilter?: () => void;
 }
 
 export function CatalogToolbar({
@@ -74,6 +79,8 @@ export function CatalogToolbar({
   onExportSelected,
   onDeleteAll,
   userRole,
+  unshelvedOnly = false,
+  onClearUnshelvedFilter,
 }: CatalogToolbarProps) {
   const canEdit = userRole === "ADMIN" || userRole === "STAFF";
   const canDelete = userRole === "ADMIN";
@@ -89,6 +96,7 @@ export function CatalogToolbar({
           {activeCriteriaCount > 0 && (
             <Badge className="bg-brand-copper/15 text-brand-copper border-0 text-[10px] ml-1">
               {activeCriteriaCount} active
+              {unshelvedOnly ? " · unshelved" : ""}
             </Badge>
           )}
           {activeCriteriaCount > 0 && (
@@ -105,6 +113,36 @@ export function CatalogToolbar({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {unshelvedOnly && onClearUnshelvedFilter && (
+          <div
+            role="status"
+            className="flex flex-col gap-2 rounded-lg border border-brand-copper/35 bg-brand-copper/10 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex min-w-0 items-start gap-2">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-copper" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-foreground">Unshelved copies only</p>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Results are limited to catalog titles that have at least one{" "}
+                  <span className="font-medium text-foreground">AVAILABLE</span> copy with{" "}
+                  <span className="font-medium text-foreground">no shelf</span> assigned. Other copies
+                  of the same title may still be shelved.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 border-brand-copper/40 text-[11px] sm:ml-2"
+              onClick={onClearUnshelvedFilter}
+            >
+              <X className="mr-1 h-3.5 w-3.5" />
+              Remove unshelved filter
+            </Button>
+          </div>
+        )}
+
         {/* Search + Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="md:col-span-2 relative">
