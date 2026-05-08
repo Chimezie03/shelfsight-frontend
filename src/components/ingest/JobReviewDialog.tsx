@@ -74,6 +74,7 @@ interface FormFields {
   deweyDecimal: string;
   coverImageUrl: string;
   publishYear: string;
+  copies: number;
 }
 
 function confidenceBadgeClass(score: number | null): string {
@@ -97,6 +98,7 @@ export default function JobReviewDialog({
     deweyDecimal: "",
     coverImageUrl: "",
     publishYear: "",
+    copies: 1,
   });
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -113,6 +115,7 @@ export default function JobReviewDialog({
         deweyDecimal: job.suggestedDewey ?? "",
         coverImageUrl: job.coverImageUrl ?? "",
         publishYear: job.suggestedPublishDate ?? "",
+        copies: 1,
       });
       setOcrOpen(false);
       setActionError(null);
@@ -163,6 +166,7 @@ export default function JobReviewDialog({
           language: job.language || undefined,
           coverImageUrl: form.coverImageUrl || undefined,
           publishYear: form.publishYear || undefined,
+          copies: form.copies,
         },
       });
       await onActionComplete();
@@ -354,6 +358,28 @@ export default function JobReviewDialog({
                     className="mt-1"
                   />
                 </div>
+              </div>
+              <div>
+                <Label className="text-[11px] text-muted-foreground">
+                  Number of Copies
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={form.copies}
+                  onChange={(e) => {
+                    const next = parseInt(e.target.value, 10);
+                    setForm((prev) => ({
+                      ...prev,
+                      copies: Number.isFinite(next) ? Math.max(1, next) : 1,
+                    }));
+                  }}
+                  className="mt-1"
+                />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  How many physical copies of this book are you adding?
+                </p>
               </div>
 
               {/* Language badge */}

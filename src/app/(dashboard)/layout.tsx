@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Users,
   BarChart3,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -44,6 +45,7 @@ export default function DashboardLayout({
     { name: "Circulation", path: "/circulation", icon: RefreshCw, roles: ["ADMIN", "STAFF"] },
     { name: "Members", path: "/members", icon: Users, roles: ["ADMIN"] },
     { name: "Reports", path: "/reports", icon: BarChart3, roles: ["ADMIN"] },
+    { name: "Settings", path: "/settings", icon: Settings, roles: ["ADMIN", "STAFF", "PATRON"] },
   ];
 
   const navigation = allNavigation.filter((item) =>

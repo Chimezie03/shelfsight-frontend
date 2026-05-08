@@ -129,3 +129,50 @@ export async function createInviteApi(
     body: input,
   });
 }
+
+export interface OrgDetails {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  counts: {
+    users: number;
+    books: number;
+    bookCopies: number;
+    loans: number;
+  };
+}
+
+interface OrgResponse {
+  organization: OrgDetails;
+}
+
+export async function getOrgApi(organizationId: string): Promise<OrgDetails> {
+  const data = await apiFetch<OrgResponse>(`/orgs/${organizationId}`);
+  return data.organization;
+}
+
+export async function renameOrgApi(
+  organizationId: string,
+  name: string,
+): Promise<OrgDetails> {
+  const data = await apiFetch<OrgResponse>(`/orgs/${organizationId}`, {
+    method: 'PATCH',
+    body: { name },
+  });
+  return data.organization;
+}
+
+export async function deleteOrgApi(organizationId: string): Promise<void> {
+  await apiFetch(`/orgs/${organizationId}`, { method: 'DELETE' });
+}
+
+export async function updateMyProfileApi(
+  userId: string,
+  input: { name?: string; email?: string; password?: string },
+): Promise<void> {
+  await apiFetch(`/users/${userId}`, {
+    method: 'PUT',
+    body: input,
+  });
+}
