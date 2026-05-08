@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/core";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Copy, ExternalLink, Library } from "lucide-react";
+import { Copy, ExternalLink, Library, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -146,6 +146,26 @@ function MapPageContent() {
   const [savedLayoutSignature, setSavedLayoutSignature] = useState("");
   const lastSavedNodesRef = useRef<ShelfFlowNode[]>([]);
   const [placementHints, setPlacementHints] = useState<PlacementHintsPayload | null>(null);
+  const [shelvingAssistantDismissed, setShelvingAssistantDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("shelving-assistant-dismissed") === "1") {
+        setShelvingAssistantDismissed(true);
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }, []);
+
+  const dismissShelvingAssistant = useCallback(() => {
+    setShelvingAssistantDismissed(true);
+    try {
+      localStorage.setItem("shelving-assistant-dismissed", "1");
+    } catch {
+      /* ignore storage errors */
+    }
+  }, []);
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const shelfIdParam = searchParams.get("shelfId");
@@ -729,7 +749,7 @@ function MapPageContent() {
             />
           </div>
 
-          {placementHints && placementHints.shelfHints.length > 0 && (
+          {placementHints && placementHints.shelfHints.length > 0 && !shelvingAssistantDismissed && (
             <div className="flex-none border-b border-border bg-card px-4 py-3 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 gap-2">
@@ -772,6 +792,16 @@ function MapPageContent() {
                       <ExternalLink className="h-3.5 w-3.5" />
                       Unshelved in catalog
                     </Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title="Dismiss"
+                    onClick={dismissShelvingAssistant}
+                  >
+                    <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

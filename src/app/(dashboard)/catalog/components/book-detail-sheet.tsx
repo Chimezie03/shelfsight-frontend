@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   Sheet,
   SheetContent,
@@ -23,17 +21,10 @@ import {
   Building,
   Hash,
   FileText,
-  Map,
-  ExternalLink,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 import type { Book } from "@/types/book";
 import { getDeweyCategory } from "../constants";
-import { apiFetch } from "@/lib/api";
-import { updateBook } from "@/lib/books";
-import { ApiError } from "@/lib/api";
 
 interface BookDetailSheetProps {
   book: Book | null;
@@ -43,16 +34,6 @@ interface BookDetailSheetProps {
   onDelete: (book: Book) => void;
   onUpdated?: (book: Book) => void;
   userRole?: string;
-}
-
-interface CatalogShelfSuggestion {
-  shelfId: string;
-  label: string;
-  category: string | null;
-  deweyRangeStart: string | null;
-  deweyRangeEnd: string | null;
-  score: number;
-  rationale: string[];
 }
 
 function getStatusBadge(status: Book["status"]) {
@@ -106,50 +87,10 @@ export function BookDetailSheet({
   onOpenChange,
   onEdit,
   onDelete,
-  onUpdated,
   userRole,
 }: BookDetailSheetProps) {
   const canEdit = userRole === "ADMIN" || userRole === "STAFF";
   const canDelete = userRole === "ADMIN";
-  const [suggestions, setSuggestions] = useState<CatalogShelfSuggestion[] | null>(null);
-  const [assigningShelfId, setAssigningShelfId] = useState<string | null>(null);
-
-  const handleAssignToShelf = async (shelfId: string, shelfLabel: string) => {
-    if (!book) return;
-    setAssigningShelfId(shelfId);
-    try {
-      const updated = await updateBook(book.id, {
-        shelfId,
-        shelfTier: null,
-        shelfSlot: null,
-      });
-      toast.success(`Placed "${book.title}" on ${shelfLabel}.`);
-      onUpdated?.(updated);
-      onOpenChange(false);
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Could not assign shelf.";
-      toast.error(message);
-    } finally {
-      setAssigningShelfId(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!open || !book) return;
-    let cancelled = false;
-    apiFetch<{ suggestions: CatalogShelfSuggestion[] }>(
-      `/map/placement-hints?bookId=${encodeURIComponent(book.id)}`,
-    )
-      .then((data) => {
-        if (!cancelled) setSuggestions(data.suggestions ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setSuggestions(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, book]);
 
   if (!book) return null;
 
@@ -232,70 +173,6 @@ export function BookDetailSheet({
             </div>
 
             <Separator />
-
-            {/* Suggested shelves (heuristic) */}
-            {open && suggestions && suggestions.length > 0 && (
-              <>
-                <div>
-                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                    <Map className="w-3.5 h-3.5" />
-                    Suggested shelves
-                  </h3>
-                  <ul className="space-y-2">
-                    {suggestions.slice(0, 5).map((s) => (
-                      <li
-                        key={s.shelfId}
-                        className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-medium leading-tight">{s.label}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              {s.category ?? "Uncategorized"}
-                              {s.deweyRangeStart != null &&
-                                s.deweyRangeEnd != null &&
-                                ` · Dewey ${s.deweyRangeStart}–${s.deweyRangeEnd}`}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1.5">
-                            {canEdit && (
-                              <Button
-                                size="sm"
-                                className="h-7 gap-1 text-[10px] px-2 bg-brand-navy text-white hover:bg-brand-navy/90"
-                                onClick={() => handleAssignToShelf(s.shelfId, s.label)}
-                                disabled={assigningShelfId !== null}
-                                title={`Place "${book.title}" on ${s.label}`}
-                              >
-                                {assigningShelfId === s.shelfId ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <MapPin className="w-3 h-3" />
-                                )}
-                                Place here
-                              </Button>
-                            )}
-                            <Button variant="outline" size="sm" className="h-7 gap-1 text-[10px] px-2" asChild>
-                              <Link href={`/map?shelfId=${encodeURIComponent(s.shelfId)}&viewer=1`}>
-                                <ExternalLink className="w-3 h-3" />
-                                Map
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                        {s.rationale.length > 0 && (
-                          <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground list-disc pl-4">
-                            {s.rationale.map((line, i) => (
-                              <li key={i}>{line}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <Separator />
-              </>
-            )}
 
             {/* Location & Availability */}
             <div>

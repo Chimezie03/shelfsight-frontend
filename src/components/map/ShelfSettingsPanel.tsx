@@ -102,7 +102,7 @@ export function ShelfSettingsPanel({
             <Separator />
 
             {/* Form fields */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="flex flex-col gap-3.5 p-3">
                 {/* Name */}
                 <div className="space-y-1.5">
